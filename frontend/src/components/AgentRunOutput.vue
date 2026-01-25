@@ -654,53 +654,139 @@ export default {
           for (let i = 0; i < lines.length; i++) {
             checkPageBreak(8)
             doc.text(lines[i], margin, yPos)
-            yPos += 8
+            yPos += fontSize * 0.5 + 2
+          }
+          if (color) {
+            doc.setTextColor(0, 0, 0) // Reset to black
           }
         }
+        
+        // Get service information from parsed content
+        const serviceName = this.parsedContent?.serviceName || this.parsedContent?.service_name || 'API Service'
+        const version = this.parsedContent?.version || '1.0.0'
+        const baseUrl = this.parsedContent?.baseUrl || this.parsedContent?.base_url || 'Not specified'
+        const description = this.parsedContent?.description || 'No description provided'
+        const authentication = this.parsedContent?.authentication || 'OAuth 2.0'
+        const securityRequirements = this.parsedContent?.securityRequirements || this.parsedContent?.security_requirements || []
+        const endpoints = this.parsedContent?.endpoints || []
         
         // Title
-        addText('API Specification', 20, true, [151, 20, 77])
+        addText(serviceName || 'API Specification', 20, true, [151, 20, 77])
         yPos += 5
         
-        // Service Name
-        const serviceName = this.parsedContent?.serviceName || this.parsedContent?.service_name || 'API Service'
-        addText(`Service: ${serviceName}`, 14, true)
-        yPos += 10
+        // Service Information Section
+        addText('Service Information', 14, true)
+        yPos += 3
         
-        // Description
-        const description = this.parsedContent?.description || ''
-        if (description) {
-          addText(`Description: ${description}`, 12)
-          yPos += 10
-        }
-        
-        // OpenAPI Spec Section
-        addText('OpenAPI 3.0 Specification', 16, true)
-        yPos += 8
-        
-        let specText = this.openApiSpec
-        if (specText.startsWith('"') && specText.endsWith('"')) {
-          try {
-            specText = JSON.parse(specText)
-          } catch (e) {
-            // Not a JSON string, use as is
-          }
-        }
-        specText = specText.replace(/^```yaml\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
-        
-        // Add spec as formatted text
         doc.setFontSize(10)
         doc.setFont(undefined, 'normal')
-        doc.setTextColor(0, 0, 0)
-        const specLines = doc.splitTextToSize(specText, maxWidth)
-        for (let i = 0; i < specLines.length; i++) {
-          checkPageBreak(6)
-          doc.text(specLines[i], margin, yPos)
-          yPos += 6
+        addText(`Version: ${version}`, 10)
+        addText(`Base URL: ${baseUrl}`, 10)
+        addText(`Description: ${description}`, 10)
+        addText(`Authentication: ${authentication}`, 10)
+        yPos += 5
+        
+        // Security Requirements Section
+        if (securityRequirements && securityRequirements.length > 0) {
+          addText('Security Requirements', 14, true)
+          yPos += 3
+          doc.setFontSize(10)
+          securityRequirements.forEach(req => {
+            addText(`• ${req}`, 10)
+          })
+          yPos += 5
+        }
+        
+        // Endpoints Section
+        if (endpoints && endpoints.length > 0) {
+          addText('API Endpoints', 14, true)
+          yPos += 3
+          
+          endpoints.forEach((endpoint, index) => {
+            checkPageBreak(25)
+            
+            // Endpoint header
+            doc.setFontSize(12)
+            doc.setFont(undefined, 'bold')
+            const endpointTitle = `${endpoint.method || 'GET'} ${endpoint.path || '/endpoint'}`
+            addText(endpointTitle, 12, true, [151, 20, 77])
+            yPos += 2
+            
+            // Endpoint description
+            if (endpoint.description || endpoint.summary) {
+              doc.setFontSize(10)
+              doc.setFont(undefined, 'normal')
+              addText(endpoint.description || endpoint.summary, 10)
+              yPos += 2
+            }
+            
+            // Parameters
+            if (endpoint.parameters && endpoint.parameters.length > 0) {
+              doc.setFontSize(10)
+              doc.setFont(undefined, 'bold')
+              addText('Parameters:', 10, true)
+              doc.setFont(undefined, 'normal')
+              endpoint.parameters.forEach(param => {
+                const paramText = `  • ${param.name || 'param'} (${param.in || 'query'}): ${param.description || 'No description'}`
+                addText(paramText, 9)
+              })
+              yPos += 2
+            }
+            
+            // Responses
+            if (endpoint.responses) {
+              doc.setFontSize(10)
+              doc.setFont(undefined, 'bold')
+              addText('Responses:', 10, true)
+              doc.setFont(undefined, 'normal')
+              Object.keys(endpoint.responses).forEach(statusCode => {
+                const response = endpoint.responses[statusCode]
+                const responseText = `  • ${statusCode}: ${response.description || 'No description'}`
+                addText(responseText, 9)
+              })
+              yPos += 2
+            }
+            
+            yPos += 3 // Space between endpoints
+          })
+        } else {
+          // If no endpoints, add a note
+          addText('API Endpoints', 14, true)
+          yPos += 3
+          addText('No endpoints defined. Please refer to the OpenAPI specification for complete endpoint details.', 10)
+          yPos += 5
+        }
+        
+        // OpenAPI Specification Reference
+        addText('OpenAPI Specification', 14, true)
+        yPos += 3
+        addText('This API follows OpenAPI 3.0.0 specification standards. For the complete OpenAPI YAML specification, please refer to the generated OpenAPI spec that can be imported into Swagger Editor.', 10)
+        yPos += 3
+        addText('Swagger Editor: https://editor.swagger.io/', 10)
+        
+        // Footer
+        const totalPages = doc.internal.getNumberOfPages()
+        for (let i = 1; i <= totalPages; i++) {
+          doc.setPage(i)
+          doc.setFontSize(8)
+          doc.setTextColor(128, 128, 128)
+          doc.text(
+            `Page ${i} of ${totalPages}`,
+            pageWidth / 2,
+            pageHeight - 10,
+            { align: 'center' }
+          )
+          doc.text(
+            `Generated on ${new Date().toLocaleDateString()}`,
+            pageWidth - margin,
+            pageHeight - 10,
+            { align: 'right' }
+          )
+          doc.setTextColor(0, 0, 0)
         }
         
         // Save PDF
-        const fileName = `${(serviceName || 'API_Spec').replace(/\s+/g, '_')}_API_Specification.pdf`
+        const fileName = `${serviceName.replace(/\s+/g, '_')}_API_Documentation.pdf`
         doc.save(fileName)
       } catch (error) {
         console.error('Error exporting PDF:', error)
