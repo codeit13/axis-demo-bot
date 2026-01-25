@@ -1,0 +1,53 @@
+{
+  "knowledge_sources": [
+    {
+      "name": "Security & Compliance Policies",
+      "type": "security_policies",
+      "description": "Security best practices and compliance requirements",
+      "priority": 10,
+      "instructions": "- Add authentication and authorization requirements\n- Include input validation and sanitization requirements\n- Specify encryption requirements for sensitive data\n- Add security headers and CORS policies\n- Include rate limiting and DDoS protection considerations\n- Specify secure communication protocols (HTTPS, TLS)\n- Add security logging and monitoring requirements"
+    },
+    {
+      "name": "Axis Bank Architecture Standards",
+      "type": "architecture_standards",
+      "description": "Internal naming conventions and architecture guidelines",
+      "priority": 10,
+      "instructions": "- Use camelCase for variables and functions\n- Use PascalCase for classes and components\n- Use UPPER_SNAKE_CASE for constants\n- Prefix API endpoints with /api/v{version}/\n- Use descriptive, business-domain specific names\n- Follow microservice naming patterns (e.g., payment-service, user-service)\n- Include proper namespace and package organization"
+    },
+    {
+      "name": "Best Practices Repository",
+      "type": "best_practices",
+      "description": "Performance optimization patterns and strategies",
+      "priority": 8,
+      "instructions": "- Add caching strategies (Redis, in-memory caching)\n- Include database query optimization requirements\n- Specify pagination for list endpoints\n- Add connection pooling requirements\n- Include async/await patterns where applicable\n- Specify timeout and retry policies\n- Add performance monitoring and metrics requirements\n- Include load balancing considerations"
+    },
+    {
+      "name": "Testing Standards",
+      "type": "testing_requirements",
+      "description": "Testing standards and coverage requirements",
+      "priority": 8,
+      "instructions": "- Require unit tests with >80% code coverage\n- Include integration test requirements\n- Specify test data setup and teardown\n- Add mocking and stubbing requirements\n- Include performance and load testing\n- Specify test automation in CI/CD pipeline\n- Add test documentation requirements"
+    },
+    {
+      "name": "Internal Microservice Templates",
+      "type": "design_patterns",
+      "description": "Internal design patterns and microservice templates",
+      "priority": 9,
+      "instructions": "- Use repository pattern for data access\n- Implement service layer pattern\n- Follow dependency injection principles\n- Use factory pattern for object creation\n- Implement observer pattern for event handling\n- Follow SOLID principles\n- Use design patterns from Axis Bank architecture standards"
+    },
+    {
+      "name": "AI Best Practices",
+      "type": "ai_knowledge",
+      "description": "General AI coding best practices and patterns",
+      "priority": 5,
+      "instructions": "- Follow clean code principles\n- Write self-documenting code\n- Include comprehensive error handling\n- Add proper logging and monitoring\n- Ensure code is testable and maintainable\n- Follow industry-standard coding conventions"
+    }
+  ],
+  "rule_mapping": {
+    "Always add security requirements": "security_policies",
+    "Include Axis Bank naming conventions": "architecture_standards",
+    "Suggest performance optimization": "best_practices",
+    "Add testing requirements (>80% coverage)": "testing_requirements",
+    "Reference internal design patterns": "design_patterns"
+  }
+}
