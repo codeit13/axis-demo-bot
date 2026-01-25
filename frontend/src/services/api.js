@@ -1,7 +1,25 @@
 import axios from 'axios'
 
+// Determine base URL based on MODE environment variable
+// Vite exposes env variables prefixed with VITE_
+const getBaseURL = () => {
+  // Get MODE from Vite env (exposed via vite.config.js)
+  const mode = import.meta.env.VITE_MODE || 'DEV'
+  
+  if (mode === 'PROD' || mode === 'production') {
+    // In production, use the current hostname
+    const protocol = window.location.protocol
+    const hostname = window.location.hostname
+    const port = window.location.port ? `:${window.location.port}` : ''
+    return `${protocol}//${hostname}${port}/api`
+  } else {
+    // In development, use localhost
+    return 'http://localhost:8000/api'
+  }
+}
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json'
   }

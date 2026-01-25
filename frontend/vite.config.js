@@ -19,4 +19,6 @@ export default defineConfig({
       }
     }
   }
+  // Vite automatically exposes all VITE_* variables to the client
+  // No need for define block - import.meta.env.VITE_MODE will work automatically
 })
