@@ -97,18 +97,14 @@ Format your response as JSON:
 
                 response = self.generate_with_groq(user_prompt, temperature=0.3)
                 
-                # Try to parse as JSON
-                try:
-                    if "```json" in response:
-                        json_str = response.split("```json")[1].split("```")[0].strip()
-                    elif "```" in response:
-                        json_str = response.split("```")[1].split("```")[0].strip()
-                    else:
-                        json_str = response.strip()
-                    
-                    review_data = json.loads(json_str)
-                    content = json.dumps(review_data, indent=2)
-                except (json.JSONDecodeError, KeyError):
+                # Parse response using robust JSON extractor
+                from ..utils.json_extractor import extract_json_from_text
+                
+                extracted = extract_json_from_text(response, fallback_to_text=False)
+                
+                if isinstance(extracted, dict):
+                    content = json.dumps(extracted, indent=2)
+                else:
                     # Fallback: store as text
                     content = json.dumps({
                         "review": response,

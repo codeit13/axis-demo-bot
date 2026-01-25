@@ -1,5 +1,6 @@
 """Integration Agent - Generates API specifications from service descriptions."""
 import json
+import re
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 from .base_agent import BaseAgent
@@ -186,39 +187,22 @@ Format your response as JSON:
 
             response = self.generate_with_groq(user_prompt, temperature=0.2)
 
-            # Parse response
-            try:
-                # Try to extract JSON from markdown code blocks
-                if "```json" in response:
-                    json_str = response.split("```json")[1].split("```")[0].strip()
-                elif "```" in response:
-                    # Could be YAML or JSON in code block
-                    parts = response.split("```")
-                    if len(parts) >= 3:
-                        json_str = parts[1].strip()
-                        # If it looks like YAML, try to find JSON part
-                        if json_str.startswith("yaml") or json_str.startswith("openapi"):
-                            # Look for JSON part
-                            if "{" in response:
-                                json_start = response.find("{")
-                                json_end = response.rfind("}") + 1
-                                json_str = response[json_start:json_end]
-                    else:
-                        json_str = response.strip()
-                else:
-                    json_str = response.strip()
-                
-                # If response contains YAML directly, extract it
-                if "openapi:" in response and "```" not in response:
-                    # Response might be pure YAML, wrap it in JSON
-                    yaml_start = response.find("openapi:")
-                    yaml_content = response[yaml_start:].strip()
+            # Parse response using robust JSON extractor
+            from ..utils.json_extractor import extract_json_from_text, extract_yaml_from_text
+            
+            spec_data = extract_json_from_text(response, fallback_to_text=False)
+            
+            # If JSON extraction failed, try YAML extraction
+            if not spec_data or not isinstance(spec_data, dict):
+                yaml_data = extract_yaml_from_text(response)
+                if yaml_data:
+                    # Convert YAML to our expected format
                     spec_data = {
-                        "openapi_spec": yaml_content,
+                        "openapi_spec": response if "openapi:" in response.lower() else str(yaml_data),
                         "serviceName": service_name,
-                        "version": "1.0.0",
-                        "baseUrl": base_url,
-                        "description": description,
+                        "version": yaml_data.get("info", {}).get("version", "1.0.0"),
+                        "baseUrl": yaml_data.get("servers", [{}])[0].get("url", base_url) if yaml_data.get("servers") else base_url,
+                        "description": yaml_data.get("info", {}).get("description", description),
                         "authentication": "OAuth 2.0",
                         "endpoints": [],
                         "securityRequirements": [
@@ -228,11 +212,9 @@ Format your response as JSON:
                         ]
                     }
                 else:
-                    spec_data = json.loads(json_str)
-            except (json.JSONDecodeError, KeyError) as e:
-                # Fallback: create basic structure
-                spec_data = {
-                    "openapi_spec": response if "openapi" in response.lower() else f"""openapi: 3.0.0
+                    # Final fallback: create basic structure
+                    spec_data = {
+                        "openapi_spec": response if "openapi" in response.lower() else f"""openapi: 3.0.0
 info:
   title: {service_name}
   version: 1.0.0
@@ -255,18 +237,37 @@ paths:
                     type: string
                     example: "healthy"
 """,
-                    "serviceName": service_name,
-                    "version": "1.0.0",
-                    "baseUrl": base_url,
-                    "description": description,
-                    "authentication": "OAuth 2.0",
-                    "endpoints": [],
-                    "securityRequirements": [
-                        "OAuth 2.0 authentication required",
-                        "Rate limiting: 100 requests per minute",
-                        "All requests must be sent over HTTPS"
-                    ]
-                }
+                        "serviceName": service_name,
+                        "version": "1.0.0",
+                        "baseUrl": base_url,
+                        "description": description,
+                        "authentication": "OAuth 2.0",
+                        "endpoints": [],
+                        "securityRequirements": [
+                            "OAuth 2.0 authentication required",
+                            "Rate limiting: 100 requests per minute",
+                            "All requests must be sent over HTTPS"
+                        ]
+                    }
+            
+            # Ensure openapi_spec is a string (extract YAML if present)
+            if isinstance(spec_data, dict) and "openapi_spec" in spec_data:
+                # If openapi_spec is already a string, keep it
+                if not isinstance(spec_data["openapi_spec"], str):
+                    # Try to extract YAML from response
+                    if "openapi:" in response.lower():
+                        # Extract YAML content
+                        yaml_start = response.lower().find("openapi:")
+                        if yaml_start != -1:
+                            yaml_content = response[yaml_start:].strip()
+                            # Remove markdown code blocks if present
+                            yaml_content = re.sub(r'^```(?:yaml|yml)?\s*\n?', '', yaml_content, flags=re.IGNORECASE)
+                            yaml_content = re.sub(r'```\s*$', '', yaml_content)
+                            spec_data["openapi_spec"] = yaml_content.strip()
+                        else:
+                            spec_data["openapi_spec"] = str(spec_data["openapi_spec"])
+                    else:
+                        spec_data["openapi_spec"] = str(spec_data["openapi_spec"])
 
             # Create suggestion
             suggestion = self.create_suggestion(

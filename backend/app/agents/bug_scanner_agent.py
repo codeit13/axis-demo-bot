@@ -98,18 +98,15 @@ Format your response as JSON:
 
                 response = self.generate_with_groq(user_prompt, temperature=0.2)
                 
-                # Parse response
-                try:
-                    if "```json" in response:
-                        json_str = response.split("```json")[1].split("```")[0].strip()
-                    elif "```" in response:
-                        json_str = response.split("```")[1].split("```")[0].strip()
-                    else:
-                        json_str = response.strip()
-                    
-                    fix_data = json.loads(json_str)
-                    content = json.dumps(fix_data, indent=2)
-                except (json.JSONDecodeError, KeyError):
+                # Parse response using robust JSON extractor
+                from ..utils.json_extractor import extract_json_from_text
+                
+                extracted = extract_json_from_text(response, fallback_to_text=False)
+                
+                if isinstance(extracted, dict):
+                    content = json.dumps(extracted, indent=2)
+                else:
+                    # Fallback: create structure with response
                     content = json.dumps({
                         "bug_explanation": response,
                         "suggested_fix": "See explanation above"

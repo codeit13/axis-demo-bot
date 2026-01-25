@@ -28,7 +28,7 @@
         </div>
         <h2 class="ai-insight-title">{{ aiInsight.title }}</h2>
         <p class="ai-insight-description">
-          {{ aiInsight.description }}
+          {{ aiInsight.description.length > 80 ? aiInsight.description.slice(0, 80) + '...' : aiInsight.description }}
         </p>
         <Button 
           v-if="aiInsight.suggestionId" 

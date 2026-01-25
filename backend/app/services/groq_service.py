@@ -73,21 +73,16 @@ class GroqService:
         Returns:
             Parsed JSON response as dict
         """
-        import json
+        from ..utils.json_extractor import extract_json_from_text
+        
         prompt = f"{user_prompt}\n\nPlease respond in valid JSON format only."
         response = self.generate(system_prompt, prompt, temperature)
         
-        # Try to extract JSON from response
-        try:
-            # Look for JSON in code blocks
-            if "```json" in response:
-                json_str = response.split("```json")[1].split("```")[0].strip()
-            elif "```" in response:
-                json_str = response.split("```")[1].split("```")[0].strip()
-            else:
-                json_str = response.strip()
-            
-            return json.loads(json_str)
-        except json.JSONDecodeError:
-            # If parsing fails, return as text
-            return {"content": response}
+        # Use robust JSON extractor
+        extracted = extract_json_from_text(response, fallback_to_text=True)
+        
+        # If extraction returned a dict, use it; otherwise wrap in content
+        if isinstance(extracted, dict):
+            return extracted
+        else:
+            return {"content": extracted if isinstance(extracted, str) else str(extracted)}

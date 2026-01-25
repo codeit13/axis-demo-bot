@@ -340,17 +340,14 @@ Format your response as JSON:
 
             response = self.generate_with_groq(user_prompt, temperature=0.2)
 
-            # Parse response
-            try:
-                if "```json" in response:
-                    json_str = response.split("```json")[1].split("```")[0].strip()
-                elif "```" in response:
-                    json_str = response.split("```")[1].split("```")[0].strip()
-                else:
-                    json_str = response.strip()
-
-                enhanced_data = json.loads(json_str)
-            except (json.JSONDecodeError, KeyError):
+            # Parse response using robust JSON extractor
+            from ..utils.json_extractor import extract_json_from_text
+            
+            extracted = extract_json_from_text(response, fallback_to_text=False)
+            
+            if isinstance(extracted, dict):
+                enhanced_data = extracted
+            else:
                 # Fallback: create basic structure
                 enhanced_data = {
                     "original_prompt": original_prompt,
