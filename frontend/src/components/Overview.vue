@@ -34,12 +34,12 @@
           v-if="aiInsight.suggestionId" 
           variant="default" 
           class="review-button"
-          @click="$router.push(`/suggestions/${aiInsight.suggestionId}`)"
+          @click="$router.push(`/agent-runs/${aiInsight.suggestionId}`)"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
           </svg>
-          Review Actions
+          View Output
         </Button>
       </CardContent>
     </Card>

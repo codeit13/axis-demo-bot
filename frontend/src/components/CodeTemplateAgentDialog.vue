@@ -1,7 +1,7 @@
 <template>
   <Dialog :open="isOpen" @update:open="$emit('update:open', $event)">
-    <DialogContent class="max-w-6xl max-h-[90vh] overflow-y-auto border-0">
-      <!-- Header -->
+    <DialogContent class="max-w-6xl max-h-[90vh] border-0 flex flex-col p-0">
+      <!-- Header - Fixed -->
       <div class="dialog-header-gradient">
         <div class="dialog-header-content">
           <div class="flex items-center gap-3">
@@ -25,6 +25,8 @@
         </div>
       </div>
 
+      <!-- Scrollable Content -->
+      <div class="dialog-body">
       <!-- Navigation Tabs -->
       <div class="tabs-container">
         <button 
@@ -91,14 +93,6 @@
         </div>
       </div>
 
-      <!-- Footer -->
-      <div class="dialog-footer">
-        <div class="footer-info">
-          {{ filteredTemplates.length }} Templates Available • All templates follow Axis Bank coding standards
-        </div>
-        <Button variant="outline" class="close-footer-button" @click="$emit('update:open', false)">
-          Close
-        </Button>
       </div>
     </DialogContent>
   </Dialog>
@@ -300,12 +294,22 @@ export default {
   color: white;
   padding: 2rem;
   margin: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1001;
+  flex-shrink: 0;
 }
 
 .dialog-header-content {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+}
+
+.dialog-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0;
 }
 
 .header-icon {
@@ -348,13 +352,20 @@ export default {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
+.dialog-body {
+  padding: 0;
+}
+
 .tabs-container {
   display: flex;
   gap: 0;
   border-bottom: 1px solid #e5e5e5;
   padding: 0;
   background: white;
-  margin: 0 2rem;
+  margin: 0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 .tab-button {
@@ -383,6 +394,13 @@ export default {
   padding: 2rem;
   background: #f5f5f5;
   min-height: 400px;
+  margin: 0;
+}
+
+.dialog-footer {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #e5e5e5;
+  background: white;
   margin: 0;
 }
 

@@ -92,7 +92,7 @@ export default {
   position: fixed;
   left: 0;
   top: 73px;
-  z-index: 0;
+  z-index: 999;
   transform: translateX(0);
   transition: transform 0.3s ease;
 }

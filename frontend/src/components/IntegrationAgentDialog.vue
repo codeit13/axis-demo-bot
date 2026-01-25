@@ -1,30 +1,34 @@
 <template>
   <Dialog :open="isOpen" @update:open="$emit('update:open', $event)">
-    <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto border-0">
-      <!-- Header -->
-      <div class="dialog-header">
-        <div class="flex items-center gap-3">
-          <div class="agent-header-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="2" width="8" height="8" rx="2"></rect>
-              <rect x="14" y="2" width="8" height="8" rx="2"></rect>
-              <rect x="2" y="14" width="8" height="8" rx="2"></rect>
-              <rect x="14" y="14" width="8" height="8" rx="2"></rect>
+    <DialogContent class="max-w-4xl max-h-[90vh] border-0 flex flex-col p-0">
+      <!-- Header - Fixed -->
+      <div class="dialog-header-gradient">
+        <div class="dialog-header-content">
+          <div class="flex items-center gap-3">
+            <div class="header-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="2" width="8" height="8" rx="2"></rect>
+                <rect x="14" y="2" width="8" height="8" rx="2"></rect>
+                <rect x="2" y="14" width="8" height="8" rx="2"></rect>
+                <rect x="14" y="14" width="8" height="8" rx="2"></rect>
+              </svg>
+            </div>
+            <div>
+              <DialogTitle class="header-title">Integration Agent</DialogTitle>
+              <p class="header-subtitle">Generate API Specifications in Standard Format</p>
+            </div>
+          </div>
+          <DialogClose class="close-button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
-          </div>
-          <div>
-            <DialogTitle class="text-2xl font-bold">Integration Agent</DialogTitle>
-            <p class="text-sm text-gray-600 mt-1">Generate API Specifications in Standard Format</p>
-          </div>
+          </DialogClose>
         </div>
-        <DialogClose class="close-button">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </DialogClose>
       </div>
 
+      <!-- Scrollable Content -->
+      <div class="dialog-body">
       <!-- How It Works Section -->
       <div class="how-it-works-section">
         <h3 class="section-title">How It Works</h3>
@@ -120,24 +124,20 @@
 
         <div class="generate-button-container">
           <Button 
-            v-if="!specGenerated" 
             variant="default" 
             class="generate-button" 
             @click="generateSpec"
+            :disabled="loading"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg v-if="loading" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spinner">
+              <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+              <path d="M12 2 A10 10 0 0 1 22 12" stroke-linecap="round"></path>
+            </svg>
+            <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
             </svg>
-            Generate API Specification
+            {{ loading ? 'Generating...' : 'Generate API Specification' }}
           </Button>
-          <div v-else class="action-buttons">
-            <Button variant="default" class="generate-button" @click="generateSpec">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
-              </svg>
-              Generate API Specification
-            </Button>
-          </div>
         </div>
       </div>
 
@@ -227,7 +227,7 @@
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                       </svg>
-                      {{ copySuccess ? 'Copied!' : 'Copy to Swagger Editor' }}
+                      {{ copySuccess ? 'Copied!' : 'Copy' }}
                     </Button>
                     <Button variant="outline" size="sm" @click="exportYAML" class="export-yaml-button">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -249,24 +249,7 @@
             </div>
           </CardContent>
         </Card>
-        <div class="export-pdf-section">
-          <Button variant="default" class="export-pdf-main-button" @click="exportPDF">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Export as PDF
-          </Button>
-        </div>
       </div>
-
-      <!-- Footer -->
-      <div class="dialog-footer">
-        <div class="pro-tip">
-          <strong>Pro Tip:</strong> Use 'Load Sample Data' to see an example specification.
-        </div>
-        <Button variant="outline" @click="$emit('update:open', false)">Close</Button>
       </div>
     </DialogContent>
   </Dialog>
@@ -698,25 +681,44 @@ export default {
 </script>
 
 <style scoped>
-.dialog-header {
+.dialog-header-gradient {
+  background: linear-gradient(135deg, #97144D 0%, #7a0f3d 100%);
+  color: white;
+  padding: 2rem;
+  margin: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1001;
+  flex-shrink: 0;
+}
+
+.dialog-header-content {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid #e5e5e5;
-  margin-bottom: 0;
 }
 
-.agent-header-icon {
+.header-icon {
   width: 48px;
   height: 48px;
   border-radius: 8px;
-  background-color: #f3e8ff;
-  color: #97144D;
+  background-color: rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.header-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 0.25rem;
+}
+
+.header-subtitle {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
 }
 
 .close-button {
@@ -724,7 +726,7 @@ export default {
   border: none;
   padding: 0.5rem;
   cursor: pointer;
-  color: #6b7280;
+  color: white;
   border-radius: 4px;
   transition: background-color 0.2s;
   display: flex;
@@ -733,12 +735,21 @@ export default {
 }
 
 .close-button:hover {
-  background-color: #f3f4f6;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.dialog-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0;
+}
+
+.dialog-body {
+  padding: 2rem;
 }
 
 .how-it-works-section {
   margin-bottom: 2rem;
-  padding: 0 2rem;
 }
 
 .section-title {
@@ -796,7 +807,7 @@ export default {
   background-color: #f9fafb;
   padding: 1.5rem;
   border-radius: 8px;
-  margin: 0 2rem 2rem 2rem;
+  margin: 0 0 1rem 0;
 }
 
 .section-header {
@@ -861,32 +872,47 @@ export default {
 }
 
 .generate-button-container {
-  display: flex;
-  justify-content: center;
   margin-top: 1.5rem;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 1rem;
-  width: 100%;
-  justify-content: center;
+  margin-bottom: 0;
 }
 
 .generate-button {
   background-color: #97144D;
   color: white;
   border: none;
-  padding: 0.75rem 2rem;
+  padding: 0.875rem 2rem;
   font-size: 1rem;
   font-weight: 600;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
+  width: 100%;
+  transition: all 0.2s;
 }
 
-.generate-button:hover {
+.generate-button:hover:not(:disabled) {
   background-color: #7a0f3d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(151, 20, 77, 0.2);
+}
+
+.generate-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.generate-button .spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .export-pdf-section {
@@ -918,7 +944,7 @@ export default {
 
 /* Spec Result Section */
 .spec-result-section {
-  margin: 2rem;
+  margin: 0;
 }
 
 .spec-result-card {

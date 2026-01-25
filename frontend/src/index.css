@@ -36,3 +36,75 @@
     color: hsl(var(--foreground));
   }
 }
+
+/* Modern Minimalistic Scrollbar Styling */
+/* Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(151, 20, 77, 0.2);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(151, 20, 77, 0.4);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(151, 20, 77, 0.2) transparent;
+}
+
+/* For better visibility on light backgrounds */
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(151, 20, 77, 0.3);
+}
+
+/* Dark mode scrollbar (if needed in future) */
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  * {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+}
+
+/* Dialog z-index overrides for mobile - ensure dialogs appear above sidebar and overlay */
+/* Override for reka-ui Dialog components */
+[data-reka-dialog-overlay],
+[data-radix-dialog-overlay] {
+  z-index: 1000 !important;
+}
+
+[data-reka-dialog-content],
+[data-radix-dialog-content] {
+  z-index: 1001 !important;
+}
+
+/* Additional overrides for Tailwind z-50 classes used in dialogs */
+.fixed.inset-0.bg-black\/80 {
+  z-index: 1000 !important;
+}
+
+.fixed.left-1\/2.top-1\/2 {
+  z-index: 1001 !important;
+}

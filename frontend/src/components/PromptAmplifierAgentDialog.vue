@@ -1,7 +1,7 @@
 <template>
   <Dialog :open="isOpen" @update:open="$emit('update:open', $event)">
-    <DialogContent class="max-w-6xl max-h-[90vh] overflow-y-auto border-0">
-      <!-- Header -->
+    <DialogContent class="max-w-6xl max-h-[90vh] border-0 flex flex-col p-0">
+      <!-- Header - Fixed -->
       <div class="dialog-header-gradient">
         <div class="dialog-header-content">
           <div class="flex items-center gap-3">
@@ -24,6 +24,7 @@
         </div>
       </div>
 
+      <!-- Scrollable Content -->
       <div class="dialog-body">
         <!-- Impact Metrics Section -->
         <div class="metrics-section">
@@ -330,15 +331,6 @@
         </div>
       </div>
 
-      <!-- Footer -->
-      <div class="dialog-footer">
-        <div class="pro-tip">
-          <strong>Pro Tip:</strong> The more context you provide, the less amplification is needed
-        </div>
-        <Button variant="outline" class="close-footer-button" @click="$emit('update:open', false)">
-          Close
-        </Button>
-      </div>
     </DialogContent>
   </Dialog>
 </template>
@@ -576,6 +568,10 @@ export default {
   color: white;
   padding: 2rem;
   margin: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1001;
+  flex-shrink: 0;
 }
 
 .dialog-header-content {
@@ -628,6 +624,8 @@ export default {
   padding: 2rem;
   background: #f5f5f5;
   margin: 0;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .section-header-with-icon {
