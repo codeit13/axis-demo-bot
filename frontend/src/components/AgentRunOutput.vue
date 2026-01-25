@@ -68,8 +68,120 @@
         </CardContent>
       </Card>
 
-      <!-- Output Content -->
-      <Card class="output-card">
+      <!-- Prompt Amplifier Agent Special UI -->
+      <template v-if="isPromptAmplifierAgent">
+        <!-- Amplified Output Section -->
+        <Card class="output-card">
+          <CardHeader>
+            <div class="panel-header-with-action">
+              <CardTitle>Amplified Output</CardTitle>
+              <Button 
+                v-if="amplifiedPrompt" 
+                variant="outline" 
+                size="sm" 
+                @click="copyEnhancedPrompt"
+                class="copy-prompt-button"
+                :class="{ 'copy-success': copySuccess }"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                {{ copySuccess ? 'Copied!' : 'Copy' }}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div class="output-display">
+              <p v-if="!amplifiedPrompt" class="output-placeholder">
+                No amplified prompt available
+              </p>
+              <div v-else class="output-content">
+                <pre class="output-text">{{ amplifiedPrompt }}</pre>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <!-- Improvement Breakdown Section -->
+        <Card v-if="enhancedData && enhancedData.improvements && enhancedData.improvements.length > 0" class="output-card">
+          <CardHeader>
+            <CardTitle>Improvement Breakdown</CardTitle>
+            <p class="section-subtitle">See what was enhanced in your prompt</p>
+          </CardHeader>
+          <CardContent>
+            <TooltipProvider>
+              <div class="improvements-grid">
+                <Tooltip 
+                  v-for="(improvement, index) in enhancedData.improvements" 
+                  :key="index"
+                >
+                  <TooltipTrigger as-child>
+                    <div class="improvement-card">
+                      <div class="improvement-header">
+                        <div class="improvement-icon-wrapper" :class="getImprovementTypeClass(improvement.type)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="improvement-icon">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        </div>
+                        <div class="improvement-content">
+                          <div class="improvement-type-badge" :class="getImprovementTypeClass(improvement.type)">
+                            {{ getImprovementTypeLabel(improvement.type) }}
+                          </div>
+                          <div class="improvement-description-short">{{ improvement.description }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent v-if="improvement.reason" class="improvement-tooltip">
+                    <div class="tooltip-content">
+                      <strong>Why this matters:</strong>
+                      <p>{{ improvement.reason }}</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
+          </CardContent>
+        </Card>
+
+        <!-- Knowledge Sources Used Section -->
+        <Card v-if="knowledgeSourcesUsed.length > 0" class="output-card">
+          <CardHeader>
+            <CardTitle>Knowledge Sources Used</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div class="sources-used-grid">
+              <Card 
+                v-for="(source, index) in knowledgeSourcesUsed" 
+                :key="index"
+                class="source-card"
+              >
+                <CardContent>
+                  <div class="source-card-content">
+                    <div class="source-icon-wrapper">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="source-icon">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                      </svg>
+                    </div>
+                    <div class="source-details">
+                      <div class="source-name-used">{{ source.source || source.name }}</div>
+                      <div class="source-description-used">{{ source.description }}</div>
+                    </div>
+                    <Badge :variant="getSourceTypeVariant(source.type)" class="source-type-badge">
+                      {{ getSourceTypeLabel(source.type) }}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </CardContent>
+        </Card>
+      </template>
+
+      <!-- Standard Output Content (for other agents) -->
+      <Card v-else class="output-card">
         <CardHeader>
           <CardTitle>Agent Output</CardTitle>
         </CardHeader>
@@ -111,6 +223,40 @@
         </CardContent>
       </Card>
 
+      <!-- OpenAPI Spec Section (for Integration Agent) -->
+      <Card v-if="isIntegrationAgent && openApiSpec" class="openapi-spec-card">
+        <CardHeader>
+          <div class="openapi-header">
+            <CardTitle>OpenAPI 3.0 Specification</CardTitle>
+            <div class="openapi-actions">
+              <Button variant="outline" size="sm" @click="exportYAML" class="export-yaml-button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Export YAML
+              </Button>
+              <Button variant="default" size="sm" @click="exportPDF" class="export-pdf-button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                Export PDF
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div class="openapi-spec-container">
+            <pre class="openapi-spec-content" ref="openapiSpecRef">{{ openApiSpec }}</pre>
+          </div>
+        </CardContent>
+      </Card>
+
       <!-- Action Buttons (if pending) -->
       <div v-if="suggestion.status === 'pending'" class="action-buttons">
         <Button 
@@ -139,6 +285,7 @@ import api from '../services/api'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 export default {
   name: 'AgentRunOutput',
@@ -148,21 +295,79 @@ export default {
     CardTitle,
     CardContent,
     Button,
-    Badge
+    Badge,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger
   },
   data() {
     return {
       loading: true,
       error: null,
       suggestion: null,
-      processing: false
+      processing: false,
+      copySuccess: false
     }
   },
   computed: {
     parsedContent() {
       if (!this.suggestion || !this.suggestion.content) return null
       try {
-        return JSON.parse(this.suggestion.content)
+        const parsed = JSON.parse(this.suggestion.content)
+        // For prompt amplifier, exclude enhanced_prompt from parsedContent as it's displayed separately
+        if (this.isPromptAmplifierAgent && parsed.enhanced_prompt) {
+          const { enhanced_prompt, ...rest } = parsed
+          return rest
+        }
+        // For integration agent, exclude openapi_spec from parsedContent as it's displayed separately
+        if (this.isIntegrationAgent && parsed.openapi_spec) {
+          const { openapi_spec, ...rest } = parsed
+          return rest
+        }
+        return parsed
+      } catch (e) {
+        return null
+      }
+    },
+    isPromptAmplifierAgent() {
+      return this.suggestion && this.suggestion.agent_type === 'prompt_amplifier_agent'
+    },
+    isIntegrationAgent() {
+      return this.suggestion && this.suggestion.agent_type === 'integration_agent'
+    },
+    amplifiedPrompt() {
+      if (!this.isPromptAmplifierAgent || !this.parsedContent) return null
+      try {
+        const fullContent = JSON.parse(this.suggestion.content)
+        return fullContent.enhanced_prompt || fullContent.enhanced?.enhanced_prompt || null
+      } catch (e) {
+        return null
+      }
+    },
+    enhancedData() {
+      if (!this.isPromptAmplifierAgent || !this.suggestion || !this.suggestion.content) return null
+      try {
+        const fullContent = JSON.parse(this.suggestion.content)
+        return fullContent.enhanced || fullContent.improvements ? fullContent : null
+      } catch (e) {
+        return null
+      }
+    },
+    knowledgeSourcesUsed() {
+      if (!this.enhancedData) return []
+      return this.enhancedData.knowledge_sources_used || []
+    },
+    openApiSpec() {
+      if (!this.isIntegrationAgent || !this.parsedContent) return null
+      try {
+        const fullContent = JSON.parse(this.suggestion.content)
+        let spec = fullContent.openapi_spec || fullContent.spec?.openapi_spec || null
+        if (spec && typeof spec === 'string') {
+          // Remove markdown code block markers if present
+          spec = spec.replace(/^```yaml\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
+        }
+        return spec
       } catch (e) {
         return null
       }
@@ -275,6 +480,232 @@ export default {
       if (status === 'approved') return 'default'
       if (status === 'rejected') return 'destructive'
       return 'secondary'
+    },
+    async copyEnhancedPrompt() {
+      if (!this.amplifiedPrompt) return
+      
+      const promptText = this.amplifiedPrompt
+      
+      // Try modern Clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(promptText)
+          this.copySuccess = true
+          setTimeout(() => {
+            this.copySuccess = false
+          }, 2000)
+          return
+        } catch (err) {
+          console.error('Clipboard API failed:', err)
+        }
+      }
+      
+      // Fallback method
+      try {
+        const textarea = document.createElement('textarea')
+        textarea.value = promptText
+        textarea.style.position = 'fixed'
+        textarea.style.left = '-9999px'
+        textarea.style.top = '0'
+        textarea.setAttribute('readonly', '')
+        document.body.appendChild(textarea)
+        
+        if (navigator.userAgent.match(/ipad|iphone/i)) {
+          const range = document.createRange()
+          range.selectNodeContents(textarea)
+          const selection = window.getSelection()
+          selection.removeAllRanges()
+          selection.addRange(range)
+          textarea.setSelectionRange(0, 999999)
+        } else {
+          textarea.select()
+          textarea.setSelectionRange(0, promptText.length)
+        }
+        
+        const successful = document.execCommand('copy')
+        document.body.removeChild(textarea)
+        
+        if (successful) {
+          this.copySuccess = true
+          setTimeout(() => {
+            this.copySuccess = false
+          }, 2000)
+        }
+      } catch (err) {
+        console.error('Copy failed:', err)
+        alert('Failed to copy to clipboard')
+      }
+    },
+    getImprovementTypeClass(type) {
+      const typeMap = {
+        'security': 'security',
+        'performance': 'performance',
+        'testing': 'testing',
+        'architecture': 'architecture',
+        'compliance': 'compliance',
+        'documentation': 'documentation'
+      }
+      return typeMap[type?.toLowerCase()] || 'default'
+    },
+    getImprovementTypeLabel(type) {
+      const labelMap = {
+        'security': 'Security',
+        'performance': 'Performance',
+        'testing': 'Testing',
+        'architecture': 'Architecture',
+        'compliance': 'Compliance',
+        'documentation': 'Documentation'
+      }
+      return labelMap[type?.toLowerCase()] || 'Enhancement'
+    },
+    getSourceTypeVariant(type) {
+      const variantMap = {
+        'internal': 'default',
+        'external': 'secondary',
+        'documentation': 'outline'
+      }
+      return variantMap[type?.toLowerCase()] || 'default'
+    },
+    getSourceTypeLabel(type) {
+      const labelMap = {
+        'internal': 'Internal',
+        'external': 'External',
+        'documentation': 'Documentation'
+      }
+      return labelMap[type?.toLowerCase()] || 'Source'
+    },
+    exportYAML() {
+      if (!this.openApiSpec) {
+        alert('No OpenAPI specification available to export')
+        return
+      }
+      
+      let specText = this.openApiSpec
+      
+      // If it's a JSON string (escaped), unescape it
+      if (specText.startsWith('"') && specText.endsWith('"')) {
+        try {
+          specText = JSON.parse(specText)
+        } catch (e) {
+          // Not a JSON string, use as is
+        }
+      }
+      
+      // Remove any markdown code block markers if present
+      specText = specText.replace(/^```yaml\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
+      
+      if (!specText || specText.length === 0) {
+        alert('OpenAPI specification is empty')
+        return
+      }
+      
+      // Create and download YAML file
+      const blob = new Blob([specText], { type: 'text/yaml;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const serviceName = this.parsedContent?.serviceName || this.parsedContent?.service_name || 'API_Spec'
+      a.download = `${serviceName.replace(/\s+/g, '_')}_API_Spec.yaml`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    },
+    async exportPDF() {
+      if (!this.openApiSpec) {
+        alert('No OpenAPI specification available to export')
+        return
+      }
+      
+      try {
+        // Dynamic import of jsPDF
+        const { jsPDF } = await import('jspdf')
+        
+        const doc = new jsPDF()
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const pageHeight = doc.internal.pageSize.getHeight()
+        const margin = 20
+        const maxWidth = pageWidth - 2 * margin
+        let yPos = margin
+        
+        // Helper function to add a new page if needed
+        const checkPageBreak = (requiredSpace = 10) => {
+          if (yPos + requiredSpace > pageHeight - margin) {
+            doc.addPage()
+            yPos = margin
+            return true
+          }
+          return false
+        }
+        
+        // Helper function to add text with word wrap
+        const addText = (text, fontSize, isBold = false, color = null) => {
+          checkPageBreak(15)
+          doc.setFontSize(fontSize)
+          if (isBold) {
+            doc.setFont(undefined, 'bold')
+          } else {
+            doc.setFont(undefined, 'normal')
+          }
+          if (color) {
+            doc.setTextColor(color[0], color[1], color[2])
+          }
+          const lines = doc.splitTextToSize(text, maxWidth)
+          for (let i = 0; i < lines.length; i++) {
+            checkPageBreak(8)
+            doc.text(lines[i], margin, yPos)
+            yPos += 8
+          }
+        }
+        
+        // Title
+        addText('API Specification', 20, true, [151, 20, 77])
+        yPos += 5
+        
+        // Service Name
+        const serviceName = this.parsedContent?.serviceName || this.parsedContent?.service_name || 'API Service'
+        addText(`Service: ${serviceName}`, 14, true)
+        yPos += 10
+        
+        // Description
+        const description = this.parsedContent?.description || ''
+        if (description) {
+          addText(`Description: ${description}`, 12)
+          yPos += 10
+        }
+        
+        // OpenAPI Spec Section
+        addText('OpenAPI 3.0 Specification', 16, true)
+        yPos += 8
+        
+        let specText = this.openApiSpec
+        if (specText.startsWith('"') && specText.endsWith('"')) {
+          try {
+            specText = JSON.parse(specText)
+          } catch (e) {
+            // Not a JSON string, use as is
+          }
+        }
+        specText = specText.replace(/^```yaml\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
+        
+        // Add spec as formatted text
+        doc.setFontSize(10)
+        doc.setFont(undefined, 'normal')
+        doc.setTextColor(0, 0, 0)
+        const specLines = doc.splitTextToSize(specText, maxWidth)
+        for (let i = 0; i < specLines.length; i++) {
+          checkPageBreak(6)
+          doc.text(specLines[i], margin, yPos)
+          yPos += 6
+        }
+        
+        // Save PDF
+        const fileName = `${(serviceName || 'API_Spec').replace(/\s+/g, '_')}_API_Specification.pdf`
+        doc.save(fileName)
+      } catch (error) {
+        console.error('Error exporting PDF:', error)
+        alert('Failed to export PDF: ' + error.message)
+      }
     }
   }
 }
@@ -545,6 +976,313 @@ export default {
   background-color: #059669;
 }
 
+/* OpenAPI Spec Section */
+.openapi-spec-card {
+  margin-bottom: 2rem;
+}
+
+.openapi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.openapi-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.export-yaml-button,
+.export-pdf-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.export-pdf-button {
+  background-color: #97144D;
+  color: white;
+  border: none;
+}
+
+.export-pdf-button:hover {
+  background-color: #7a0f3d;
+}
+
+.openapi-spec-container {
+  height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  background-color: #1e1e1e;
+}
+
+.openapi-spec-content {
+  margin: 0;
+  padding: 1.5rem;
+  color: #d4d4d4;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Prompt Amplifier UI Styles */
+.panel-header-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.copy-prompt-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.copy-prompt-button.copy-success {
+  background-color: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+.output-display {
+  min-height: 200px;
+}
+
+.output-placeholder {
+  color: #9ca3af;
+  font-style: italic;
+  padding: 2rem;
+  text-align: center;
+}
+
+.output-text {
+  background-color: #f9fafb;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  padding: 1.5rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+  color: #374151;
+}
+
+.section-subtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+}
+
+/* Improvement Breakdown */
+.improvements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.improvement-card {
+  padding: 1rem;
+  background-color: #f9fafb;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.improvement-card:hover {
+  border-color: #97144D;
+  box-shadow: 0 2px 4px rgba(151, 20, 77, 0.1);
+}
+
+.improvement-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.improvement-icon-wrapper {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.improvement-icon-wrapper.security {
+  background-color: #fee2e2;
+  color: #ef4444;
+}
+
+.improvement-icon-wrapper.performance {
+  background-color: #dbeafe;
+  color: #3b82f6;
+}
+
+.improvement-icon-wrapper.testing {
+  background-color: #d1fae5;
+  color: #10b981;
+}
+
+.improvement-icon-wrapper.architecture {
+  background-color: #f3e8ff;
+  color: #97144D;
+}
+
+.improvement-icon-wrapper.compliance {
+  background-color: #fef3c7;
+  color: #f59e0b;
+}
+
+.improvement-icon-wrapper.documentation {
+  background-color: #e0e7ff;
+  color: #6366f1;
+}
+
+.improvement-icon-wrapper.default {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.improvement-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.improvement-type-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.improvement-type-badge.security {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.improvement-type-badge.performance {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.improvement-type-badge.testing {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.improvement-type-badge.architecture {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+}
+
+.improvement-type-badge.compliance {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.improvement-type-badge.documentation {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.improvement-type-badge.default {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.improvement-description-short {
+  font-size: 0.875rem;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.improvement-tooltip {
+  max-width: 300px;
+  z-index: 50;
+}
+
+.tooltip-content {
+  padding: 0.5rem;
+}
+
+.tooltip-content strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #1f2937;
+}
+
+.tooltip-content p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.875rem;
+}
+
+/* Knowledge Sources Used */
+.sources-used-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.source-card {
+  border: 1px solid #e5e5e5;
+}
+
+.source-card-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.source-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background-color: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #97144D;
+}
+
+.source-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.source-name-used {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.source-description-used {
+  font-size: 0.75rem;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.source-type-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
 @media (max-width: 768px) {
   .agent-run-output {
     padding: 1rem;
@@ -561,6 +1299,27 @@ export default {
 
   .action-buttons {
     flex-direction: column;
+  }
+
+  .openapi-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .openapi-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .openapi-actions .export-yaml-button,
+  .openapi-actions .export-pdf-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .improvements-grid,
+  .sources-used-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
