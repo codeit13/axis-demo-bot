@@ -189,8 +189,100 @@ Format your response as JSON:
 
             # Parse response using robust JSON extractor
             from ..utils.json_extractor import extract_json_from_text, extract_yaml_from_text
+            import yaml
             
-            spec_data = extract_json_from_text(response, fallback_to_text=False)
+            # Helper function to check if content looks like YAML
+            def looks_like_yaml(text):
+                if not text:
+                    return False
+                text = text.strip()
+                if text.startswith('---') or 'openapi:' in text.lower()[:100]:
+                    return True
+                # Check for YAML key: value pattern
+                yaml_pattern = r'^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*:\s*'
+                lines = text.split('\n')[:5]
+                yaml_lines = sum(1 for line in lines if re.match(yaml_pattern, line))
+                return yaml_lines >= 2
+            
+            # First, check if the response contains YAML (even if wrapped in ```json blocks)
+            # Extract YAML content from code blocks if present
+            yaml_content = None
+            if "```" in response:
+                # Extract content from code blocks (could be marked as json but actually YAML)
+                code_block_pattern = r'```(?:json|yaml|yml)?\s*\n?(.*?)```'
+                matches = re.findall(code_block_pattern, response, re.DOTALL | re.IGNORECASE)
+                for match in matches:
+                    content = match.strip()
+                    # Check if it's YAML (starts with openapi: or has YAML structure)
+                    if "openapi:" in content.lower()[:50] or looks_like_yaml(content):
+                        try:
+                            yaml_data = yaml.safe_load(content)
+                            if isinstance(yaml_data, dict) and ("openapi" in str(yaml_data).lower() or "info" in yaml_data):
+                                yaml_content = content
+                                break
+                        except:
+                            pass
+            
+            # Use preferred_keys to ensure we get the complete spec structure
+            preferred_keys = ["openapi_spec", "serviceName", "version", "baseUrl", "description", "endpoints"]
+            spec_data = extract_json_from_text(response, fallback_to_text=False, preferred_keys=preferred_keys)
+            
+            # If we found YAML content, ensure it's in the openapi_spec field
+            if yaml_content and isinstance(spec_data, dict):
+                # Check if openapi_spec is missing or empty
+                if "openapi_spec" not in spec_data or not spec_data.get("openapi_spec"):
+                    spec_data["openapi_spec"] = yaml_content
+                # Or if openapi_spec exists but doesn't contain YAML, replace it
+                elif "openapi:" not in str(spec_data.get("openapi_spec", "")).lower():
+                    spec_data["openapi_spec"] = yaml_content
+            
+            # Validate that we got a proper structure
+            if isinstance(spec_data, dict):
+                # Check if it looks like a schema fragment instead of the full spec
+                # Schema fragments typically have "type" and "properties" but not our expected fields
+                is_schema_fragment = (
+                    "openapi_spec" not in spec_data and 
+                    "serviceName" not in spec_data and
+                    ("type" in spec_data or "properties" in spec_data) and
+                    len(spec_data) < 5  # Schema fragments are usually small
+                )
+                
+                if is_schema_fragment:
+                    # This might be a nested schema, try to find the parent object
+                    # Re-extract without preferred_keys to get all objects, then find the largest one
+                    all_objects = extract_json_from_text(response, fallback_to_text=False, allow_multiple=True)
+                    if isinstance(all_objects, list) and len(all_objects) > 0:
+                        # Find the object with the most keys and our preferred keys (likely the root)
+                        valid_objects = [
+                            obj for obj in all_objects 
+                            if isinstance(obj, dict) and any(key in obj for key in preferred_keys)
+                        ]
+                        if valid_objects:
+                            spec_data = max(valid_objects, key=lambda x: len(x))
+                        else:
+                            # Fallback to largest object
+                            spec_data = max(all_objects, key=lambda x: len(x) if isinstance(x, dict) else 0)
+                    elif isinstance(all_objects, dict):
+                        spec_data = all_objects
+                    
+                    # If still a fragment, create proper structure
+                    if isinstance(spec_data, dict) and "openapi_spec" not in spec_data:
+                        # Wrap the fragment in a proper structure
+                        spec_data = {
+                            "openapi_spec": response if "openapi:" in response.lower() else "",
+                            "serviceName": service_name,
+                            "version": "1.0.0",
+                            "baseUrl": base_url,
+                            "description": description,
+                            "authentication": "OAuth 2.0",
+                            "endpoints": [],
+                            "securityRequirements": [
+                                "OAuth 2.0 authentication required",
+                                "Rate limiting: 100 requests per minute",
+                                "All requests must be sent over HTTPS"
+                            ],
+                            "_extracted_schema": spec_data  # Keep the extracted schema for reference
+                        }
             
             # If JSON extraction failed, try YAML extraction
             if not spec_data or not isinstance(spec_data, dict):

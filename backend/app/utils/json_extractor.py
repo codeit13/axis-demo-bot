@@ -8,7 +8,8 @@ import yaml
 def extract_json_from_text(
     text: str,
     fallback_to_text: bool = True,
-    allow_multiple: bool = False
+    allow_multiple: bool = False,
+    preferred_keys: Optional[List[str]] = None
 ) -> Union[Dict[str, Any], List[Dict[str, Any]], str]:
     """
     Extract JSON from text using multiple strategies.
@@ -24,6 +25,7 @@ def extract_json_from_text(
         text: The text to extract JSON from
         fallback_to_text: If True, return the original text if JSON extraction fails
         allow_multiple: If True, return a list of all JSON objects found
+        preferred_keys: List of keys that should be present in the JSON (helps select the right object)
         
     Returns:
         Extracted JSON as dict/list, or original text if extraction fails and fallback_to_text is True
@@ -39,43 +41,106 @@ def extract_json_from_text(
     
     found_objects = []
     
-    # Strategy 1: Extract from markdown code blocks (```json ... ```)
-    json_block_pattern = r'```(?:json)?\s*\n?(.*?)```'
+    # Strategy 1: Extract from markdown code blocks (```json ... ``` or ```yaml ... ```)
+    # Note: Sometimes YAML is wrapped in ```json blocks, so we need to check both
+    json_block_pattern = r'```(?:json|yaml|yml)?\s*\n?(.*?)```'
     matches = re.findall(json_block_pattern, text, re.DOTALL | re.IGNORECASE)
     for match in matches:
-        json_str = match.strip()
-        result = _try_parse_json(json_str)
+        content_str = match.strip()
+        
+        # First try as JSON
+        result = _try_parse_json(content_str)
         if result is not None:
-            if not allow_multiple:
-                return result
-            found_objects.append(result)
+            # If preferred_keys are specified, check if this object has them
+            if preferred_keys and _has_preferred_keys(result, preferred_keys):
+                if not allow_multiple:
+                    return result
+                found_objects.insert(0, result)  # Insert at beginning (higher priority)
+            else:
+                if not allow_multiple and not preferred_keys:
+                    return result
+                found_objects.append(result)
+        else:
+            # If JSON parsing failed, try as YAML (common for OpenAPI specs)
+            # Check if it looks like YAML (starts with key: or has YAML-like structure)
+            if _looks_like_yaml(content_str):
+                try:
+                    yaml_data = yaml.safe_load(content_str)
+                    if isinstance(yaml_data, dict):
+                        result = yaml_data
+                        if preferred_keys and _has_preferred_keys(result, preferred_keys):
+                            if not allow_multiple:
+                                return result
+                            found_objects.insert(0, result)
+                        else:
+                            if not allow_multiple and not preferred_keys:
+                                return result
+                            found_objects.append(result)
+                except (yaml.YAMLError, Exception):
+                    pass
     
     # Strategy 2: Extract from generic code blocks (``` ... ```)
+    # Also handle YAML that might be in code blocks
     if not found_objects:
         code_block_pattern = r'```[^\n]*\n?(.*?)```'
         matches = re.findall(code_block_pattern, text, re.DOTALL)
         for match in matches:
-            json_str = match.strip()
-            # Skip if it's clearly not JSON (e.g., Python code, YAML without JSON structure)
-            if not _looks_like_json(json_str):
-                continue
-            result = _try_parse_json(json_str)
-            if result is not None:
-                if not allow_multiple:
-                    return result
-                found_objects.append(result)
+            content_str = match.strip()
+            
+            # Try JSON first
+            if _looks_like_json(content_str):
+                result = _try_parse_json(content_str)
+                if result is not None:
+                    if not allow_multiple:
+                        return result
+                    found_objects.append(result)
+                    continue
+            
+            # If JSON parsing failed or doesn't look like JSON, try YAML
+            if _looks_like_yaml(content_str):
+                try:
+                    yaml_data = yaml.safe_load(content_str)
+                    if isinstance(yaml_data, dict):
+                        result = yaml_data
+                        if preferred_keys and _has_preferred_keys(result, preferred_keys):
+                            if not allow_multiple:
+                                return result
+                            found_objects.insert(0, result)
+                        else:
+                            if not allow_multiple and not preferred_keys:
+                                return result
+                            found_objects.append(result)
+                except (yaml.YAMLError, Exception):
+                    pass
     
-    # Strategy 3: Find JSON object boundaries in plain text
+    # Strategy 3: Find JSON object boundaries in plain text (prefer larger/complete objects)
     if not found_objects:
         # Look for JSON object patterns: { ... }
-        json_object_pattern = r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
-        matches = re.findall(json_object_pattern, text, re.DOTALL)
-        for match in matches:
-            result = _try_parse_json(match)
-            if result is not None:
-                if not allow_multiple:
-                    return result
-                found_objects.append(result)
+        # Use a more sophisticated approach to find complete JSON objects
+        json_objects = []
+        brace_count = 0
+        start_pos = -1
+        
+        for i, char in enumerate(text):
+            if char == '{':
+                if brace_count == 0:
+                    start_pos = i
+                brace_count += 1
+            elif char == '}':
+                brace_count -= 1
+                if brace_count == 0 and start_pos != -1:
+                    json_candidate = text[start_pos:i+1]
+                    result = _try_parse_json(json_candidate)
+                    if result is not None:
+                        json_objects.append((len(json_candidate), result))
+                    start_pos = -1
+        
+        # Sort by length (prefer larger objects) and try them
+        json_objects.sort(key=lambda x: x[0], reverse=True)
+        for _, result in json_objects:
+            if not allow_multiple:
+                return result
+            found_objects.append(result)
     
     # Strategy 4: Try parsing the entire text as JSON
     if not found_objects:
@@ -139,10 +204,18 @@ def extract_json_from_text(
                     return result
                 found_objects.append(result)
     
-    # Return results
+    # Return results - prefer objects with preferred_keys
     if found_objects:
         if allow_multiple:
             return found_objects
+        
+        # If preferred_keys specified, find the best match
+        if preferred_keys:
+            for obj in found_objects:
+                if _has_preferred_keys(obj, preferred_keys):
+                    return obj
+        
+        # Return the first (or most preferred) object
         return found_objects[0]
     
     # Fallback: return original text or empty dict
@@ -183,6 +256,58 @@ def _try_parse_json(text: str) -> Optional[Dict[str, Any]]:
         pass
     
     return None
+
+
+def _has_preferred_keys(obj: Dict[str, Any], preferred_keys: List[str]) -> bool:
+    """
+    Check if object has any of the preferred keys.
+    
+    Args:
+        obj: Dictionary to check
+        preferred_keys: List of keys to look for
+        
+    Returns:
+        True if object has at least one preferred key
+    """
+    if not isinstance(obj, dict) or not preferred_keys:
+        return False
+    return any(key in obj for key in preferred_keys)
+
+
+def _looks_like_yaml(text: str) -> bool:
+    """
+    Check if text looks like YAML.
+    
+    Args:
+        text: Text to check
+        
+    Returns:
+        True if text looks like YAML
+    """
+    if not text:
+        return False
+    
+    text = text.strip()
+    
+    # YAML indicators:
+    # - Starts with key: value pattern
+    # - Has openapi: or info: at the start
+    # - Has --- at the start
+    # - Has indentation-based structure (lines starting with spaces followed by key:)
+    if text.startswith('---'):
+        return True
+    
+    if 'openapi:' in text.lower()[:100]:  # Check first 100 chars
+        return True
+    
+    # Check for YAML key: value pattern (not JSON "key": value)
+    yaml_pattern = r'^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*:\s*'
+    lines = text.split('\n')[:5]  # Check first 5 lines
+    yaml_lines = sum(1 for line in lines if re.match(yaml_pattern, line))
+    if yaml_lines >= 2:  # At least 2 lines look like YAML
+        return True
+    
+    return False
 
 
 def _looks_like_json(text: str) -> bool:
