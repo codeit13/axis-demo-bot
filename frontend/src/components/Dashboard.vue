@@ -9,7 +9,7 @@
     <!-- Agent Cards Grid -->
     <div class="agents-grid">
       <!-- Code Generation Agent -->
-      <Card class="agent-card coming-soon">
+      <Card class="agent-card">
         <CardHeader>
           <div class="agent-card-header">
             <div class="agent-icon blue">
@@ -19,7 +19,6 @@
                 <path d="M2 12l10 5 10-5"></path>
               </svg>
             </div>
-            <Badge variant="secondary" class="status-badge coming-soon-badge">COMING SOON</Badge>
           </div>
           <CardTitle>Code Generation Agent</CardTitle>
           <p class="agent-subtitle">Intelligent Code Creation</p>
@@ -55,7 +54,7 @@
       </Card>
 
       <!-- Security Guardian Agent -->
-      <Card class="agent-card coming-soon">
+      <Card class="agent-card">
         <CardHeader>
           <div class="agent-card-header">
             <div class="agent-icon red">
@@ -63,7 +62,6 @@
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
               </svg>
             </div>
-            <Badge variant="secondary" class="status-badge coming-soon-badge">COMING SOON</Badge>
           </div>
           <CardTitle>Security Guardian Agent</CardTitle>
           <p class="agent-subtitle">Compliance & Protection</p>
@@ -149,7 +147,7 @@
       </Card>
 
       <!-- Knowledge Agent -->
-      <Card class="agent-card coming-soon">
+      <Card class="agent-card">
         <CardHeader>
           <div class="agent-card-header">
             <div class="agent-icon green">
@@ -158,7 +156,6 @@
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
               </svg>
             </div>
-            <Badge variant="secondary" class="status-badge coming-soon-badge">COMING SOON</Badge>
           </div>
           <CardTitle>Knowledge Agent</CardTitle>
           <p class="agent-subtitle">Institutional Memory</p>
@@ -289,7 +286,7 @@
       </Card>
 
       <!-- Test Data UI Agent -->
-      <Card class="agent-card coming-soon">
+      <Card class="agent-card">
         <CardHeader>
           <div class="agent-card-header">
             <div class="agent-icon teal">
@@ -299,7 +296,6 @@
                 <line x1="9" y1="21" x2="9" y2="9"></line>
               </svg>
             </div>
-            <Badge variant="secondary" class="status-badge coming-soon-badge">COMING SOON</Badge>
           </div>
           <CardTitle>Test Data UI Agent</CardTitle>
           <p class="agent-subtitle">Testing Environment Control</p>
@@ -335,7 +331,7 @@
       </Card>
 
       <!-- Test Case Generator Agent -->
-      <Card class="agent-card coming-soon">
+      <Card class="agent-card">
         <CardHeader>
           <div class="agent-card-header">
             <div class="agent-icon red">
@@ -345,7 +341,6 @@
                 <line x1="8" y1="12" x2="16" y2="12"></line>
               </svg>
             </div>
-            <Badge variant="secondary" class="status-badge coming-soon-badge">COMING SOON</Badge>
           </div>
           <CardTitle>Test Case Generator Agent</CardTitle>
           <p class="agent-subtitle">Intelligent Test Coverage</p>
@@ -381,7 +376,7 @@
       </Card>
 
       <!-- Load Testing Agent -->
-      <Card class="agent-card coming-soon">
+      <Card class="agent-card">
         <CardHeader>
           <div class="agent-card-header">
             <div class="agent-icon orange">
@@ -389,7 +384,6 @@
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
               </svg>
             </div>
-            <Badge variant="secondary" class="status-badge coming-soon-badge">COMING SOON</Badge>
           </div>
           <CardTitle>Load Testing Agent</CardTitle>
           <p class="agent-subtitle">Performance Validation</p>
@@ -425,7 +419,7 @@
       </Card>
 
       <!-- DevOps Agent -->
-      <Card class="agent-card coming-soon">
+      <Card class="agent-card">
         <CardHeader>
           <div class="agent-card-header">
             <div class="agent-icon orange">
@@ -433,7 +427,6 @@
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
               </svg>
             </div>
-            <Badge variant="secondary" class="status-badge coming-soon-badge">COMING SOON</Badge>
           </div>
           <CardTitle>DevOps Agent</CardTitle>
           <p class="agent-subtitle">Automated Operations</p>
@@ -469,7 +462,7 @@
       </Card>
 
       <!-- Documentation Agent -->
-      <Card class="agent-card coming-soon">
+      <Card class="agent-card">
         <CardHeader>
           <div class="agent-card-header">
             <div class="agent-icon blue">
@@ -479,7 +472,6 @@
                 <path d="M8 7h8M8 11h8M8 15h4"></path>
               </svg>
             </div>
-            <Badge variant="secondary" class="status-badge coming-soon-badge">COMING SOON</Badge>
           </div>
           <CardTitle>Documentation Agent</CardTitle>
           <p class="agent-subtitle">Standardized Knowledge</p>

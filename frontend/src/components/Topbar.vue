@@ -12,7 +12,7 @@
         <div class="logo-icon">
           <span style="position: relative; z-index: 1;">+</span>
         </div>
-        <span class="logo-text">Axis Neo Agentic Microservices</span>
+        <span class="logo-text">Agent Led Microservices</span>
       </div>
     </div>
     <div class="header-right">

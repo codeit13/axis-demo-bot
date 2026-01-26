@@ -5,7 +5,7 @@
         <div class="logo-icon">
           <span style="position: relative; z-index: 1;">+</span>
         </div>
-        <span class="logo-text">Axis Neo</span>
+        <span class="logo-text">Dev Hub</span>
       </div>
       <button class="close-button" @click="$emit('close')">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
