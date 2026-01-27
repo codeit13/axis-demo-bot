@@ -19,6 +19,7 @@
                 <path d="M2 12l10 5 10-5"></path>
               </svg>
             </div>
+            <Badge variant="default" class="status-badge">ACTIVE</Badge>
           </div>
           <CardTitle>Code Generation Agent</CardTitle>
           <p class="agent-subtitle">Intelligent Code Creation</p>
@@ -50,6 +51,9 @@
               <span>Auto-generates unit and integration tests</span>
             </li>
           </ul>
+          <Button variant="default" class="demo-button purple" @click="viewDemo('code-generation')">
+            View Demo →
+          </Button>
         </CardContent>
       </Card>
 
@@ -62,6 +66,7 @@
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
               </svg>
             </div>
+            <Badge variant="default" class="status-badge">ACTIVE</Badge>
           </div>
           <CardTitle>Security Guardian Agent</CardTitle>
           <p class="agent-subtitle">Compliance & Protection</p>
@@ -93,6 +98,9 @@
               <span>Validates data encryption and authentication</span>
             </li>
           </ul>
+          <Button variant="default" class="demo-button purple" @click="viewDemo('security-guardian')">
+            View Demo →
+          </Button>
         </CardContent>
       </Card>
 
@@ -156,6 +164,7 @@
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
               </svg>
             </div>
+            <Badge variant="default" class="status-badge">ACTIVE</Badge>
           </div>
           <CardTitle>Knowledge Agent</CardTitle>
           <p class="agent-subtitle">Institutional Memory</p>
@@ -187,6 +196,9 @@
               <span>Maintains design pattern library</span>
             </li>
           </ul>
+          <Button variant="default" class="demo-button purple" @click="viewDemo('knowledge')">
+            View Demo →
+          </Button>
         </CardContent>
       </Card>
 
@@ -296,6 +308,7 @@
                 <line x1="9" y1="21" x2="9" y2="9"></line>
               </svg>
             </div>
+            <Badge variant="default" class="status-badge">ACTIVE</Badge>
           </div>
           <CardTitle>Test Data UI Agent</CardTitle>
           <p class="agent-subtitle">Testing Environment Control</p>
@@ -327,6 +340,9 @@
               <span>Enables real-time configuration changes</span>
             </li>
           </ul>
+          <Button variant="default" class="demo-button purple" @click="viewDemo('test-data-ui')">
+            View Demo →
+          </Button>
         </CardContent>
       </Card>
 
@@ -341,6 +357,7 @@
                 <line x1="8" y1="12" x2="16" y2="12"></line>
               </svg>
             </div>
+            <Badge variant="default" class="status-badge">ACTIVE</Badge>
           </div>
           <CardTitle>Test Case Generator Agent</CardTitle>
           <p class="agent-subtitle">Intelligent Test Coverage</p>
@@ -372,6 +389,9 @@
               <span>Identifies untested code paths</span>
             </li>
           </ul>
+          <Button variant="default" class="demo-button purple" @click="viewDemo('test-case-generator')">
+            View Demo →
+          </Button>
         </CardContent>
       </Card>
 
@@ -384,6 +404,7 @@
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
               </svg>
             </div>
+            <Badge variant="default" class="status-badge">ACTIVE</Badge>
           </div>
           <CardTitle>Load Testing Agent</CardTitle>
           <p class="agent-subtitle">Performance Validation</p>
@@ -415,6 +436,9 @@
               <span>Auto-tunes resource configurations</span>
             </li>
           </ul>
+          <Button variant="default" class="demo-button purple" @click="viewDemo('load-testing')">
+            View Demo →
+          </Button>
         </CardContent>
       </Card>
 
@@ -427,6 +451,7 @@
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
               </svg>
             </div>
+            <Badge variant="default" class="status-badge">ACTIVE</Badge>
           </div>
           <CardTitle>DevOps Agent</CardTitle>
           <p class="agent-subtitle">Automated Operations</p>
@@ -458,6 +483,9 @@
               <span>Automated rollback on failures</span>
             </li>
           </ul>
+          <Button variant="default" class="demo-button purple" @click="viewDemo('devops')">
+            View Demo →
+          </Button>
         </CardContent>
       </Card>
 
@@ -472,6 +500,7 @@
                 <path d="M8 7h8M8 11h8M8 15h4"></path>
               </svg>
             </div>
+            <Badge variant="default" class="status-badge">ACTIVE</Badge>
           </div>
           <CardTitle>Documentation Agent</CardTitle>
           <p class="agent-subtitle">Standardized Knowledge</p>
@@ -503,6 +532,9 @@
               <span>Generates onboarding guides</span>
             </li>
           </ul>
+          <Button variant="default" class="demo-button purple" @click="viewDemo('documentation')">
+            View Demo →
+          </Button>
         </CardContent>
       </Card>
 
@@ -644,14 +676,28 @@ export default {
     viewDemo(agentType) {
       if (agentType === 'integration') {
         this.openIntegrationDialog()
-      } else if (agentType === 'template') {
+      } else if (agentType === 'template' || agentType === 'code-template') {
         this.openCodeTemplateDialog()
-      } else if (agentType === 'prompt') {
+      } else if (agentType === 'prompt' || agentType === 'prompt-amplifier') {
         this.openPromptAmplifierDialog()
       } else {
-        // Navigate to agent demo page for other agents
-        this.$router.push(`/agent-hub/${agentType}`)
+        // For other agents, show a placeholder message
+        // In the future, these can have their own dialog components
+        alert(`${this.getAgentDisplayName(agentType)} demo coming soon!`)
       }
+    },
+    getAgentDisplayName(agentType) {
+      const names = {
+        'code-generation': 'Code Generation Agent',
+        'security-guardian': 'Security Guardian Agent',
+        'knowledge': 'Knowledge Agent',
+        'test-data-ui': 'Test Data UI Agent',
+        'test-case-generator': 'Test Case Generator Agent',
+        'load-testing': 'Load Testing Agent',
+        'devops': 'DevOps Agent',
+        'documentation': 'Documentation Agent'
+      }
+      return names[agentType] || agentType
     }
   }
 }
