@@ -1,15 +1,9 @@
 <template>
   <div class="chat-container">
-    <div class="chat-header">
-      <div class="header-content">
-        <h1 class="chat-title">Chat</h1>
-        <p class="chat-subtitle">Access centralized code repository, MCPs, and all agents</p>
-      </div>
-    </div>
 
     <div class="chat-main">
       <div class="messages-container" ref="messagesContainer">
-        <div v-if="messages.length === 0" class="welcome-screen">
+        <div v-if="messages.length === 0" class="welcome-screen mt-20">
           <div class="welcome-icon">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
