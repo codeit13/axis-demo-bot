@@ -15,7 +15,7 @@
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             </svg>
           </div>
-          <h2 class="welcome-title">How can I help, Sumit?</h2>
+          <h2 class="welcome-title">How can I help, Piyush?</h2>
           <p class="welcome-subtitle">Ask me anything about your codebase, Jira tickets, or use any agent</p>
           
           <div class="suggestions-section">
@@ -62,22 +62,22 @@
             </div>
           </div>
           <div class="message-actions" v-if="message.role === 'assistant'">
-            <button class="action-btn" title="Copy">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <Button variant="ghost" size="sm" class="h-7 w-7 p-0" title="Copy">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
               </svg>
-            </button>
-            <button class="action-btn" title="Like">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            </Button>
+            <Button variant="ghost" size="sm" class="h-7 w-7 p-0" title="Like">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M7 10v12M17 10v12M3 10h18a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z"></path>
               </svg>
-            </button>
-            <button class="action-btn" title="Dislike">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            </Button>
+            <Button variant="ghost" size="sm" class="h-7 w-7 p-0" title="Dislike">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M17 14V2M7 14v12M21 14H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2z"></path>
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -112,12 +112,12 @@
           </InputGroupAddon>
           
           <InputGroupAddon align="inline-start" class="px-0 border-r">
-            <Select :modelValue="selectedAgent" @update:modelValue="selectedAgent = $event || ''" class="border-0 shadow-none h-auto min-w-[140px]">
+            <Select :modelValue="selectedAgent || 'all'" @update:modelValue="selectedAgent = $event === 'all' ? '' : $event" class="border-0 shadow-none h-auto min-w-[140px]">
               <SelectTrigger class="border-0 shadow-none h-9 px-3">
                 <SelectValue placeholder="All Agents" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">
+                <SelectItem value="all">
                   All Agents
                 </SelectItem>
                 <SelectItem v-for="agent in availableAgents" :key="agent.id" :value="agent.id">
@@ -132,10 +132,9 @@
             @keydown.enter.exact.prevent="sendMessage"
             @keydown.shift.enter.exact="inputText += '\n'"
             placeholder="Ask anything..."
-            class="min-h-[40px] max-h-[120px] resize-none border-0 shadow-none focus-visible:ring-0"
+            class="min-h-[40px] max-h-[120px] resize-none border-0 shadow-none focus-visible:ring-0 flex-1"
             rows="1"
             ref="chatInput"
-            data-slot="input-group-control"
           />
 
           <InputGroupAddon align="inline-end" class="px-2">
@@ -212,7 +211,9 @@ export default {
     }
   },
   mounted() {
-    this.autoResizeTextarea()
+    this.$nextTick(() => {
+      this.autoResizeTextarea()
+    })
   },
   methods: {
     async sendMessage() {
@@ -436,12 +437,43 @@ export default {
     },
 
     autoResizeTextarea() {
-      const textarea = this.$refs.chatInput
-      if (textarea) {
-        textarea.addEventListener('input', () => {
-          textarea.style.height = 'auto'
-          textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px'
-        })
+      // Set up initial resize
+      this.$nextTick(() => {
+        this.resizeTextarea()
+      })
+    },
+    
+    resizeTextarea() {
+      const textareaRef = this.$refs.chatInput
+      if (!textareaRef) return
+      
+      // For Vue 3 components with script setup, access the DOM element
+      let textarea = null
+      
+      // Try different ways to access the textarea element
+      if (textareaRef.$el) {
+        // Component instance with $el
+        textarea = textareaRef.$el.tagName === 'TEXTAREA' ? textareaRef.$el : textareaRef.$el.querySelector?.('textarea')
+      } else if (textareaRef instanceof HTMLElement) {
+        // Already a DOM element
+        textarea = textareaRef
+      } else if (textareaRef.getElementsByTagName) {
+        // Try getElementsByTagName if available
+        const elements = textareaRef.getElementsByTagName('textarea')
+        textarea = elements?.[0]
+      }
+      
+      // If still not found, try querySelector on the input container
+      if (!textarea) {
+        const container = this.$el?.querySelector?.('.chat-input-container')
+        if (container) {
+          textarea = container.querySelector('textarea')
+        }
+      }
+      
+      if (textarea && textarea.tagName === 'TEXTAREA') {
+        textarea.style.height = 'auto'
+        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px'
       }
     }
   },
@@ -449,6 +481,11 @@ export default {
     messages() {
       this.$nextTick(() => {
         this.scrollToBottom()
+      })
+    },
+    inputText() {
+      this.$nextTick(() => {
+        this.resizeTextarea()
       })
     }
   }
@@ -557,22 +594,7 @@ export default {
 }
 
 .suggestion-chip {
-  padding: 0.625rem 1rem;
-  background: white;
-  border: 1px solid #e5e5e5;
-  border-radius: 20px;
-  font-size: 0.875rem;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.suggestion-chip:hover {
-  background: #97144D;
-  color: white;
-  border-color: #97144D;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(151, 20, 77, 0.2);
+  white-space: nowrap;
 }
 
 .message-wrapper {
@@ -689,25 +711,6 @@ export default {
   margin-left: 44px;
 }
 
-.action-btn {
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  color: #6b7280;
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.action-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
-
 .typing-indicator {
   display: flex;
   gap: 4px;
@@ -747,110 +750,9 @@ export default {
   padding: 1rem 2rem;
 }
 
-.input-wrapper {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.75rem;
-  max-width: 100%;
-}
-
-.attach-btn {
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: transparent;
-  color: #6b7280;
-  cursor: pointer;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.attach-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.agent-selector-wrapper {
-  flex-shrink: 0;
-}
-
-.agent-selector {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  color: #374151;
-  background: white;
-  cursor: pointer;
-  min-width: 150px;
-}
-
-.agent-selector:focus {
-  outline: none;
-  border-color: #97144D;
-}
-
-.input-field-wrapper {
-  flex: 1;
-  position: relative;
-}
-
-.chat-input {
-  width: 100%;
-  min-height: 40px;
-  max-height: 120px;
-  padding: 0.625rem 1rem;
-  border: 1px solid #e5e5e5;
-  border-radius: 12px;
-  font-size: 0.9375rem;
-  font-family: inherit;
-  resize: none;
-  overflow-y: auto;
-  background: white;
-  color: #1f2937;
-}
-
-.chat-input:focus {
-  outline: none;
-  border-color: #97144D;
-}
-
-.chat-input::placeholder {
-  color: #9ca3af;
-}
-
-.send-btn {
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: #97144D;
-  color: white;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.send-btn:hover:not(:disabled) {
-  background: #7a0f3d;
-  transform: scale(1.05);
-}
-
-.send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.spinner {
-  width: 16px;
-  height: 16px;
+.spinner-small {
+  width: 14px;
+  height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: white;
   border-radius: 50%;
@@ -876,9 +778,8 @@ export default {
     max-width: 90%;
   }
   
-  .agent-selector {
-    min-width: 120px;
-    font-size: 0.8125rem;
+  .chat-input-container {
+    padding: 1rem;
   }
 }
 </style>
