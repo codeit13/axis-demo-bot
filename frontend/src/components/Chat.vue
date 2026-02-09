@@ -52,19 +52,24 @@
             </div>
             <div class="message-bubble" :class="message.role">
               <div class="message-text" v-html="formatMessage(message.content)"></div>
-              <div v-if="message.agent" class="message-agent-badge">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                </svg>
-                {{ message.agent }}
-              </div>
-              <div v-else-if="message.agents && message.agents.length > 0" class="message-agent-badge">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                </svg>
-                {{ message.agents.join(', ') }}
+              <div v-if="message.agent || (message.agents && message.agents.length > 0)" class="message-agents-container">
+                <div 
+                  v-for="(agentName, idx) in (message.agents || [message.agent])" 
+                  :key="idx"
+                  class="message-agent-tag"
+                  :class="{ 'mcp-tag': isMCPByName(agentName) }"
+                >
+                  <svg v-if="!isMCPByName(agentName)" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                  </svg>
+                  <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                  </svg>
+                  <span>{{ agentName }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -116,12 +121,18 @@
                 v-for="agentId in selectedAgents" 
                 :key="agentId"
                 class="agent-badge-btn"
+                :class="{ 'mcp-badge': isMCP(agentId) }"
                 @click.stop="removeAgent(agentId)"
                 type="button"
               >
-                <svg class="badge-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg v-if="!isMCP(agentId)" class="badge-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
                   <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+                <svg v-else class="badge-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
                 </svg>
                 <span class="badge-text">{{ getAgentName(agentId) }}</span>
                 <svg class="badge-remove-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -146,16 +157,51 @@
               </button>
               <Teleport to="body">
                 <div v-if="showAgentMenu" class="agent-menu-dropdown" :style="menuStyle" @click.stop>
-                  <div 
-                    v-for="agent in availableAgents.filter(a => !selectedAgents.includes(a.id))" 
-                    :key="agent.id"
-                    class="menu-item"
-                    @click="addAgent(agent.id); showAgentMenu = false"
-                  >
-                    {{ agent.name }}
+                  <div class="menu-tabs">
+                    <button 
+                      class="menu-tab"
+                      :class="{ active: activeMenuTab === 'agents' }"
+                      @click.stop="activeMenuTab = 'agents'"
+                    >
+                      Agents
+                    </button>
+                    <button 
+                      class="menu-tab"
+                      :class="{ active: activeMenuTab === 'mcps' }"
+                      @click.stop="activeMenuTab = 'mcps'"
+                    >
+                      MCPs
+                    </button>
                   </div>
-                  <div v-if="availableAgents.filter(a => !selectedAgents.includes(a.id)).length === 0" class="menu-item disabled">
-                    No more agents available
+                  
+                  <div class="menu-content">
+                    <div v-if="activeMenuTab === 'agents'">
+                      <div 
+                        v-for="agent in availableAgents.filter(a => !selectedAgents.includes(a.id))" 
+                        :key="agent.id"
+                        class="menu-item"
+                        @click="addAgent(agent.id); showAgentMenu = false"
+                      >
+                        {{ agent.name }}
+                      </div>
+                      <div v-if="availableAgents.filter(a => !selectedAgents.includes(a.id)).length === 0" class="menu-item disabled">
+                        No more agents available
+                      </div>
+                    </div>
+                    
+                    <div v-if="activeMenuTab === 'mcps'">
+                      <div 
+                        v-for="mcp in availableMCPs.filter(m => !selectedAgents.includes(m.id))" 
+                        :key="mcp.id"
+                        class="menu-item"
+                        @click="addAgent(mcp.id); showAgentMenu = false"
+                      >
+                        {{ mcp.name }}
+                      </div>
+                      <div v-if="availableMCPs.filter(m => !selectedAgents.includes(m.id)).length === 0" class="menu-item disabled">
+                        No more MCPs available
+                      </div>
+                    </div>
                   </div>
                 </div>
               </Teleport>
@@ -223,6 +269,7 @@ export default {
       showAgentMenu: false,
       menuClickHandled: false,
       menuStyle: {},
+      activeMenuTab: 'agents',
       availableAgents: [
         { id: 'code-generation', name: 'Code Generation Agent' },
         { id: 'security-guardian', name: 'Security Guardian Agent' },
@@ -235,6 +282,11 @@ export default {
         { id: 'load-testing', name: 'Load Testing Agent' },
         { id: 'devops', name: 'DevOps Agent' },
         { id: 'documentation', name: 'Documentation Agent' }
+      ],
+      availableMCPs: [
+        { id: 'confluence-mcp', name: 'Confluence MCP' },
+        { id: 'jira-mcp', name: 'Jira MCP' },
+        { id: 'bitbucket-mcp', name: 'Bitbucket MCP' }
       ],
       suggestions: [
         { text: 'Show me all microservices in the codebase' },
@@ -525,7 +577,18 @@ export default {
 
     getAgentName(agentId) {
       const agent = this.availableAgents.find(a => a.id === agentId)
-      return agent ? agent.name : agentId
+      if (agent) return agent.name
+      const mcp = this.availableMCPs.find(m => m.id === agentId)
+      if (mcp) return mcp.name
+      return agentId
+    },
+
+    isMCP(agentId) {
+      return this.availableMCPs.some(m => m.id === agentId)
+    },
+
+    isMCPByName(agentName) {
+      return this.availableMCPs.some(m => m.name === agentName)
     },
 
     toggleAgentMenu(e) {
@@ -537,6 +600,7 @@ export default {
       this.showAgentMenu = !this.showAgentMenu
       
       if (this.showAgentMenu) {
+        this.activeMenuTab = 'agents' // Reset to agents tab when opening
         this.$nextTick(() => {
           this.updateMenuPosition()
         })
@@ -819,15 +883,51 @@ export default {
   padding: 0;
 }
 
-.message-agent-badge {
+.message-agents-container {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
-  margin-top: 0.5rem;
+  gap: 0.375rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.message-bubble.assistant .message-agents-container {
+  border-top-color: #e5e5e5;
+}
+
+.message-agent-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
   font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+}
+
+.message-bubble.assistant .message-agent-tag {
+  background: #f3f4f6;
   color: #6b7280;
-  padding-top: 0.5rem;
-  border-top: 1px solid #e5e5e5;
+}
+
+.message-agent-tag.mcp-tag {
+  background: rgba(139, 92, 246, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.message-bubble.assistant .message-agent-tag.mcp-tag {
+  background: #f3e8ff;
+  color: #8b5cf6;
+}
+
+.message-agent-tag svg {
+  flex-shrink: 0;
+  opacity: 0.8;
 }
 
 .message-actions {
@@ -1063,6 +1163,15 @@ export default {
   color: #2563eb;
 }
 
+.agent-badge-btn.mcp-badge {
+  color: #8b5cf6;
+}
+
+.agent-badge-btn.mcp-badge:hover {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
 .agent-badge-btn .badge-icon {
   flex-shrink: 0;
   opacity: 0.8;
@@ -1093,8 +1202,45 @@ export default {
   min-width: 200px;
   max-width: 300px;
   max-height: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.menu-tabs {
+  display: flex;
+  border-bottom: 1px solid #e5e5e5;
+  background: #f9fafb;
+}
+
+.menu-tab {
+  flex: 1;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.menu-tab:hover {
+  color: #374151;
+  background: #f3f4f6;
+}
+
+.menu-tab.active {
+  color: #97144D;
+  border-bottom-color: #97144D;
+  background: white;
+}
+
+.menu-content {
+  max-height: 250px;
   overflow-y: auto;
-  display: block;
 }
 
 .menu-item {
