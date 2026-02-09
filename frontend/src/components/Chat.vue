@@ -59,6 +59,13 @@
                 </svg>
                 {{ message.agent }}
               </div>
+              <div v-else-if="message.agents && message.agents.length > 0" class="message-agent-badge">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+                {{ message.agents.join(', ') }}
+              </div>
             </div>
           </div>
           <div class="message-actions" v-if="message.role === 'assistant'">
@@ -101,59 +108,94 @@
         </div>
       </div>
 
-      <div class="chat-input-container">
-        <InputGroup class="w-full">
-          <InputGroupAddon align="inline-start" class="px-3">
-            <Button variant="ghost" size="sm" class="h-6 w-6 p-0" title="Add photos & files">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-              </svg>
-            </Button>
-          </InputGroupAddon>
+      <div class="chat-input-container" :class="{ 'has-agents': selectedAgents.length > 0 }">
+        <div class="chat-input-wrapper">
+          <div v-if="selectedAgents.length > 0" class="selected-agents-section">
+            <div class="selected-agents-inline">
+              <button
+                v-for="agentId in selectedAgents" 
+                :key="agentId"
+                class="agent-badge-btn"
+                @click.stop="removeAgent(agentId)"
+                type="button"
+              >
+                <svg class="badge-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+                <span class="badge-text">{{ getAgentName(agentId) }}</span>
+                <svg class="badge-remove-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
           
-          <InputGroupAddon align="inline-start" class="px-0 border-r">
-            <Select :modelValue="selectedAgent || 'all'" @update:modelValue="selectedAgent = $event === 'all' ? '' : $event" class="border-0 shadow-none h-auto min-w-[140px]">
-              <SelectTrigger class="border-0 shadow-none h-9 px-3">
-                <SelectValue placeholder="All Agents" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">
-                  All Agents
-                </SelectItem>
-                <SelectItem v-for="agent in availableAgents" :key="agent.id" :value="agent.id">
-                  {{ agent.name }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </InputGroupAddon>
+          <div class="input-row">
+            <div class="input-left-controls">
+              <button 
+                class="control-btn plus-btn"
+                @click.stop="toggleAgentMenu"
+                type="button"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+              <Teleport to="body">
+                <div v-if="showAgentMenu" class="agent-menu-dropdown" :style="menuStyle" @click.stop>
+                  <div 
+                    v-for="agent in availableAgents.filter(a => !selectedAgents.includes(a.id))" 
+                    :key="agent.id"
+                    class="menu-item"
+                    @click="addAgent(agent.id); showAgentMenu = false"
+                  >
+                    {{ agent.name }}
+                  </div>
+                  <div v-if="availableAgents.filter(a => !selectedAgents.includes(a.id)).length === 0" class="menu-item disabled">
+                    No more agents available
+                  </div>
+                </div>
+              </Teleport>
+            </div>
+            
+            <Textarea
+              v-model="inputText"
+              @keydown.enter.exact.prevent="sendMessage"
+              @keydown.shift.enter.exact="inputText += '\n'"
+              placeholder="Ask anything..."
+              class="chat-textarea"
+              rows="1"
+              ref="chatInput"
+            />
 
-          <Textarea
-            v-model="inputText"
-            @keydown.enter.exact.prevent="sendMessage"
-            @keydown.shift.enter.exact="inputText += '\n'"
-            placeholder="Ask anything..."
-            class="min-h-[40px] max-h-[120px] resize-none border-0 shadow-none focus-visible:ring-0 flex-1"
-            rows="1"
-            ref="chatInput"
-          />
-
-          <InputGroupAddon align="inline-end" class="px-2">
-            <Button 
-              @click="sendMessage" 
-              variant="default"
-              size="sm"
-              class="h-8 w-8 p-0"
-              :disabled="!inputText.trim() || isLoading"
-              title="Send message"
-            >
-              <svg v-if="!isLoading" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-              </svg>
-              <div v-else class="spinner-small"></div>
-            </Button>
-          </InputGroupAddon>
-        </InputGroup>
+            <div class="input-right-controls">
+              <button class="control-btn mic-btn" type="button" title="Voice input">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+              </button>
+              <button 
+                class="control-btn send-btn"
+                @click="sendMessage"
+                :disabled="!inputText.trim() || isLoading"
+                type="button"
+                title="Send message"
+              >
+                <svg v-if="!isLoading" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <div v-else class="spinner-small"></div>
+              </button>
+            </div>
+          </div>
+        </div>
         <div class="input-footer">
           <span class="footer-text">Chat can access code repository, Jira, and all agents</span>
         </div>
@@ -163,21 +205,12 @@
 </template>
 
 <script>
-import { InputGroup, InputGroupAddon } from './ui/input-group'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Textarea } from './ui/textarea'
 import { Button } from './ui/button'
 
 export default {
   name: 'Chat',
   components: {
-    InputGroup,
-    InputGroupAddon,
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
     Textarea,
     Button
   },
@@ -186,7 +219,10 @@ export default {
       messages: [],
       inputText: '',
       isLoading: false,
-      selectedAgent: '',
+      selectedAgents: [],
+      showAgentMenu: false,
+      menuClickHandled: false,
+      menuStyle: {},
       availableAgents: [
         { id: 'code-generation', name: 'Code Generation Agent' },
         { id: 'security-guardian', name: 'Security Guardian Agent' },
@@ -214,6 +250,43 @@ export default {
     this.$nextTick(() => {
       this.autoResizeTextarea()
     })
+    // Close menu when clicking outside
+    this.closeMenuHandler = (e) => {
+      // If menu click was just handled, skip this handler
+      if (this.menuClickHandled) {
+        return
+      }
+      
+      // Use setTimeout to allow button click handlers to process first
+      setTimeout(() => {
+        if (!this.$el) return
+        
+        const plusButton = this.$el.querySelector('.plus-btn')
+        const menu = this.$el.querySelector('.agent-menu-dropdown')
+        
+        // Don't close if clicking the plus button
+        if (plusButton && (plusButton === e.target || plusButton.contains(e.target))) {
+          return
+        }
+        
+        // Don't close if clicking inside the menu
+        if (menu && menu.contains(e.target)) {
+          return
+        }
+        
+        // Close if clicking outside
+        if (!this.$el.contains(e.target)) {
+          this.showAgentMenu = false
+        }
+      }, 50)
+    }
+    // Don't use capture phase - let button click process first
+    document.addEventListener('click', this.closeMenuHandler)
+  },
+  beforeUnmount() {
+    if (this.closeMenuHandler) {
+      document.removeEventListener('click', this.closeMenuHandler)
+    }
   },
   methods: {
     async sendMessage() {
@@ -222,7 +295,9 @@ export default {
       const userMessage = {
         role: 'user',
         content: this.inputText.trim(),
-        agent: this.selectedAgent ? this.availableAgents.find(a => a.id === this.selectedAgent)?.name : null
+        agents: this.selectedAgents.length > 0 
+          ? this.selectedAgents.map(id => this.availableAgents.find(a => a.id === id)?.name).filter(Boolean)
+          : null
       }
 
       this.messages.push(userMessage)
@@ -233,7 +308,9 @@ export default {
       // Call the backend API
       try {
         const api = (await import('../services/api.js')).default
-        const response = await api.sendChatMessage(messageText, this.selectedAgent || null)
+        // For now, send the first selected agent or null
+        const agentId = this.selectedAgents.length > 0 ? this.selectedAgents[0] : null
+        const response = await api.sendChatMessage(messageText, agentId)
         
         this.messages.push({
           role: 'assistant',
@@ -436,6 +513,55 @@ export default {
       }
     },
 
+    addAgent(agentId) {
+      if (agentId && !this.selectedAgents.includes(agentId)) {
+        this.selectedAgents.push(agentId)
+      }
+    },
+
+    removeAgent(agentId) {
+      this.selectedAgents = this.selectedAgents.filter(id => id !== agentId)
+    },
+
+    getAgentName(agentId) {
+      const agent = this.availableAgents.find(a => a.id === agentId)
+      return agent ? agent.name : agentId
+    },
+
+    toggleAgentMenu(e) {
+      if (e) {
+        e.stopPropagation()
+        e.preventDefault()
+      }
+      this.menuClickHandled = true
+      this.showAgentMenu = !this.showAgentMenu
+      
+      if (this.showAgentMenu) {
+        this.$nextTick(() => {
+          this.updateMenuPosition()
+        })
+      }
+      
+      // Reset flag after a short delay
+      setTimeout(() => {
+        this.menuClickHandled = false
+      }, 100)
+    },
+
+    updateMenuPosition() {
+      const plusButton = this.$el?.querySelector('.plus-btn')
+      if (plusButton) {
+        const rect = plusButton.getBoundingClientRect()
+        this.menuStyle = {
+          position: 'fixed',
+          top: `${rect.top - 8}px`,
+          left: `${rect.left}px`,
+          transform: 'translateY(-100%)',
+          zIndex: 10000
+        }
+      }
+    },
+
     autoResizeTextarea() {
       // Set up initial resize
       this.$nextTick(() => {
@@ -537,7 +663,7 @@ export default {
   flex: 1;
   overflow-y: auto;
   padding: 2rem;
-  background: #f9fafb;
+  background: white;
 }
 
 .welcome-screen {
@@ -749,6 +875,245 @@ export default {
   background: white;
   padding: 1rem 2rem;
 }
+
+.chat-input-container.has-agents {
+  padding: 1.5rem 2rem;
+}
+
+.chat-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 24px;
+  padding: 0.5rem 0.75rem;
+  transition: all 0.2s;
+  min-height: 48px;
+}
+
+.chat-input-wrapper.has-agents {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.selected-agents-section {
+  width: 100%;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
+  margin-bottom: 0.5rem;
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.chat-input-wrapper:focus-within {
+  border-color: #e5e5e5;
+  box-shadow: none;
+}
+
+.input-left-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.375rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  gap: 0.375rem;
+}
+
+.control-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.plus-btn {
+  color: #1f2937;
+}
+
+.think-btn {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.think-btn:hover {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.mic-btn {
+  color: #6b7280;
+}
+
+.send-btn {
+  background: #1f2937;
+  color: white;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.send-btn:hover:not(:disabled) {
+  background: #111827;
+  transform: scale(1.05);
+}
+
+.send-btn:disabled {
+  background: #d1d5db;
+  color: #9ca3af;
+}
+
+.chat-textarea {
+  flex: 1;
+  min-height: 40px;
+  min-width: 200px;
+  max-height: 120px;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: transparent;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  resize: none;
+  overflow-y: auto;
+  color: #1f2937;
+  outline: none;
+  box-shadow: none;
+}
+
+.chat-textarea:focus {
+  outline: none;
+  box-shadow: none;
+  border: none;
+}
+
+.chat-textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.chat-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.input-right-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.selected-agents-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  width: 100%;
+}
+
+.selected-agents-inline::-webkit-scrollbar {
+  display: none;
+}
+
+.agent-badge-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  border: none;
+  background: transparent;
+  color: #3b82f6;
+  cursor: pointer;
+  padding: 0.375rem 0.625rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.agent-badge-btn:hover {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.agent-badge-btn .badge-icon {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.agent-badge-btn .badge-text {
+  white-space: nowrap;
+}
+
+.agent-badge-btn .badge-remove-icon {
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.2s ease;
+  margin-left: 0.25rem;
+  flex-shrink: 0;
+}
+
+.agent-badge-btn:hover .badge-remove-icon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.agent-menu-dropdown {
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  min-width: 200px;
+  max-width: 300px;
+  max-height: 300px;
+  overflow-y: auto;
+  display: block;
+}
+
+.menu-item {
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+  background: #f3f4f6;
+}
+
+.menu-item.disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
 
 .spinner-small {
   width: 14px;
