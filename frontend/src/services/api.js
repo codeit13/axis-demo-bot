@@ -134,5 +134,13 @@ export default {
   // Dashboard
   getDashboardStats() {
     return api.get('/dashboard/stats')
+  },
+
+  // Chat
+  sendChatMessage(message, agentId = null) {
+    return api.post('/chat/message', {
+      message,
+      agent_id: agentId
+    })
   }
 }

@@ -3,6 +3,7 @@ import Overview from '../components/Overview.vue'
 import Dashboard from '../components/Dashboard.vue'
 import ProjectDetail from '../components/ProjectDetail.vue'
 import AgentRunOutput from '../components/AgentRunOutput.vue'
+import Chat from '../components/Chat.vue'
 
 const routes = [
   {
@@ -14,6 +15,11 @@ const routes = [
     path: '/agent-hub',
     name: 'AgentHub',
     component: Dashboard
+  },
+  {
+    path: '/chat',
+    name: 'Chat',
+    component: Chat
   },
   {
     path: '/projects/:id',

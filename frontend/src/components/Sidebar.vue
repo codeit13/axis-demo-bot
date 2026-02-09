@@ -37,6 +37,12 @@
         </svg>
         <span>Agent Hub</span>
       </router-link>
+      <router-link to="/chat" class="nav-item" :class="{ active: $route.path === '/chat' }">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Chat</span>
+      </router-link>
       <router-link to="/security" class="nav-item" :class="{ active: $route.path === '/security' }">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>

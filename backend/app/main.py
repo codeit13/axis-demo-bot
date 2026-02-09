@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 from .database import init_db
-from .api import projects, agents, suggestions, approvals, issues, business_rules, change_impact, orchestration, dashboard
+from .api import projects, agents, suggestions, approvals, issues, business_rules, change_impact, orchestration, dashboard, chat
 
 # Load environment variables from .env file
 env_path = Path(__file__).parent.parent / '.env'
@@ -42,6 +42,7 @@ app.include_router(business_rules.router)
 app.include_router(change_impact.router)
 app.include_router(orchestration.router)
 app.include_router(dashboard.router)
+app.include_router(chat.router)
 
 # Path to frontend dist folder
 FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
