@@ -265,6 +265,7 @@ export default {
       menuStyle: {},
       activeMenuTab: 'agents',
       availableAgents: [
+        { id: 'service-virtualization', name: 'Service Virtualization Agent' },
         { id: 'code-generation', name: 'Code Generation Agent' },
         { id: 'security-guardian', name: 'Security Guardian Agent' },
         { id: 'integration', name: 'Integration Agent' },
