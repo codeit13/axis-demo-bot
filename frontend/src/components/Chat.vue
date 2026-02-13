@@ -21,7 +21,7 @@
                 variant="outline"
                 size="sm"
                 class="suggestion-chip"
-                @click="sendSuggestion(suggestion.text)"
+                @click="applySuggestion(suggestion)"
               >
                 {{ suggestion.text }}
               </Button>
@@ -45,7 +45,53 @@
               </svg>
             </div>
             <div class="message-bubble" :class="message.role">
-              <div class="message-text" v-html="formatMessage(message.content)"></div>
+              <template v-if="message.type === 'serviceVirtualization' && message.mockPayload">
+                <div class="message-text sv-intro">{{ message.content }}</div>
+                <div class="sv-mock-card">
+                  <div class="sv-card-header">
+                    <div class="sv-card-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                      </svg>
+                    </div>
+                    <div class="sv-card-title-wrap">
+                      <span class="sv-card-title">{{ message.mockPayload.serviceName }}</span>
+                      <span class="sv-card-badge">Mock ready</span>
+                    </div>
+                  </div>
+                  <div class="sv-url-row">
+                    <code class="sv-url-text">{{ message.mockPayload.serverUrl }}</code>
+                    <button
+                      type="button"
+                      class="sv-copy-btn"
+                      @click="copyMockUrl(message.mockPayload.serverUrl)"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                      {{ copyMockUrlFeedback === message.mockPayload.serverUrl ? 'Copied!' : 'Copy' }}
+                    </button>
+                  </div>
+                  <div class="sv-endpoints">
+                    <div class="sv-endpoints-label">Endpoints</div>
+                    <div
+                      v-for="(ep, idx) in message.mockPayload.endpoints"
+                      :key="idx"
+                      class="sv-endpoint-row"
+                    >
+                      <span :class="['sv-method', ep.method.toLowerCase()]">{{ ep.method }}</span>
+                      <code class="sv-path">{{ message.mockPayload.serverUrl }}{{ ep.path }}</code>
+                      <span class="sv-desc">{{ ep.description }}</span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <div class="message-text" v-html="formatMessage(message.content)"></div>
+              </template>
               <div v-if="message.agent || (message.agents && message.agents.length > 0)" class="message-agents-container">
                 <div 
                   v-for="(agentName, idx) in (message.agents || [message.agent])" 
@@ -261,6 +307,7 @@ export default {
       isLoading: false,
       selectedAgents: [],
       showAgentMenu: false,
+      copyMockUrlFeedback: null,
       menuClickHandled: false,
       menuStyle: {},
       activeMenuTab: 'agents',
@@ -284,6 +331,7 @@ export default {
         { id: 'bitbucket-mcp', name: 'Bitbucket MCP' }
       ],
       suggestions: [
+        { text: 'Create a mock users API with GET /users and GET /users/:id returning name and email', agentIds: ['service-virtualization'] },
         { text: 'Show me all microservices in the codebase' },
         { text: 'Find Jira tickets assigned to me' },
         { text: 'Generate a REST API template' },
@@ -352,27 +400,61 @@ export default {
       this.inputText = ''
       this.isLoading = true
 
-      // Call the backend API
+      const agentId = this.selectedAgents.length > 0 ? this.selectedAgents[0] : null
+      const isServiceVirtualization =
+        agentId === 'service-virtualization' ||
+        this.matchesServiceVirtualization(messageText)
+      const effectiveAgentId = isServiceVirtualization ? 'service-virtualization' : agentId
+
+      // Call the backend API (Service Virtualization uses AI-structured mock_payload)
       try {
         const api = (await import('../services/api.js')).default
-        // For now, send the first selected agent or null
-        const agentId = this.selectedAgents.length > 0 ? this.selectedAgents[0] : null
-        const response = await api.sendChatMessage(messageText, agentId)
-        
-        this.messages.push({
-          role: 'assistant',
-          content: response.data.content || 'I apologize, but I encountered an error processing your request.',
-          agent: response.data.agent
-        })
+        const response = await api.sendChatMessage(messageText, effectiveAgentId)
+
+        const mockPayload = response.data?.mock_payload || null
+        if (isServiceVirtualization && mockPayload) {
+          this.messages.push({
+            role: 'assistant',
+            content: response.data.content || 'Your mock API is ready.',
+            agent: response.data.agent || 'Service Virtualization Agent',
+            type: 'serviceVirtualization',
+            mockPayload
+          })
+        } else if (isServiceVirtualization) {
+          const fallbackPayload = this.buildServiceVirtualizationPayload(messageText)
+          this.messages.push({
+            role: 'assistant',
+            content: response.data?.content || 'Your mock API is ready.',
+            agent: response.data?.agent || 'Service Virtualization Agent',
+            type: 'serviceVirtualization',
+            mockPayload: fallbackPayload
+          })
+        } else {
+          this.messages.push({
+            role: 'assistant',
+            content: response.data.content || 'I apologize, but I encountered an error processing your request.',
+            agent: response.data.agent
+          })
+        }
       } catch (error) {
         console.error('Chat API error:', error)
-        // Fallback to local response generation if API fails
-        const response = this.generateResponse(messageText)
-        this.messages.push({
-          role: 'assistant',
-          content: response.content || 'I apologize, but I encountered an error processing your request.',
-          agent: response.agent
-        })
+        if (isServiceVirtualization) {
+          const fallbackPayload = this.buildServiceVirtualizationPayload(messageText)
+          this.messages.push({
+            role: 'assistant',
+            content: 'Your mock API is ready.',
+            agent: 'Service Virtualization Agent',
+            type: 'serviceVirtualization',
+            mockPayload: fallbackPayload
+          })
+        } else {
+          const response = this.generateResponse(messageText)
+          this.messages.push({
+            role: 'assistant',
+            content: response.content || 'I apologize, but I encountered an error processing your request.',
+            agent: response.agent
+          })
+        }
       } finally {
         this.isLoading = false
         this.$nextTick(() => {
@@ -381,10 +463,62 @@ export default {
       }
     },
 
-    sendSuggestion(text) {
+    matchesServiceVirtualization(text) {
+      const t = (text || '').toLowerCase()
+      const keywords = ['mock api', 'mock service', 'service virtual', 'virtualization', 'virtualize', 'create mock', 'mock endpoint', 'fake api']
+      return keywords.some(kw => t.includes(kw))
+    },
+
+    buildServiceVirtualizationPayload(userInput) {
+      const input = (userInput || '').toLowerCase()
+      const baseUrl = 'https://mock.axisbank.dev/api/v1'
+      let serviceName = 'Mock API'
+      const endpoints = []
+
+      if (input.includes('user') && (input.includes('api') || input.includes('get') || input.includes('/'))) {
+        serviceName = 'Users API'
+        endpoints.push({ method: 'GET', path: '/users', description: 'List all users' })
+        if (input.includes(':id') || input.includes('/:id') || input.includes('by id')) {
+          endpoints.push({ method: 'GET', path: '/users/:id', description: 'Get user by ID' })
+        }
+      } else if (input.includes('payment')) {
+        serviceName = 'Payment API'
+        endpoints.push({ method: 'GET', path: '/payments', description: 'List payments' })
+        endpoints.push({ method: 'POST', path: '/payments', description: 'Create payment' })
+      } else if (input.includes('order')) {
+        serviceName = 'Orders API'
+        endpoints.push({ method: 'GET', path: '/orders', description: 'List orders' })
+        endpoints.push({ method: 'GET', path: '/orders/:id', description: 'Get order by ID' })
+      } else {
+        endpoints.push({ method: 'GET', path: '/data', description: 'Default mock endpoint' })
+      }
+
+      return {
+        serviceName,
+        serverUrl: baseUrl,
+        endpoints
+      }
+    },
+
+    copyMockUrl(url) {
+      if (!url) return
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+          this.copyMockUrlFeedback = url
+          setTimeout(() => { this.copyMockUrlFeedback = null }, 2000)
+        })
+      }
+    },
+
+    applySuggestion(suggestion) {
+      const text = typeof suggestion === 'string' ? suggestion : (suggestion.text || '')
+      const agentIds = typeof suggestion === 'object' && Array.isArray(suggestion.agentIds) ? suggestion.agentIds : []
       this.inputText = text
+      this.selectedAgents = agentIds.filter(
+        id => this.availableAgents.some(a => a.id === id) || this.availableMCPs.some(m => m.id === id)
+      )
       this.$nextTick(() => {
-        this.sendMessage()
+        this.autoResizeTextarea()
       })
     },
 
@@ -876,6 +1010,170 @@ export default {
   background: transparent;
   color: inherit;
   padding: 0;
+}
+
+/* Service Virtualization mock API card in chat */
+.sv-intro {
+  margin-bottom: 0.75rem;
+}
+
+.sv-mock-card {
+  background: linear-gradient(135deg, #faf5f8 0%, #f9fafb 100%);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.sv-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.sv-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #97144D 0%, #7a0f3d 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sv-card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sv-card-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.sv-card-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #059669;
+  background: #d1fae5;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+}
+
+.sv-url-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 0.625rem 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.sv-url-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #166534;
+  font-family: 'Monaco', 'Courier New', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sv-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #166534;
+  background: white;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.sv-copy-btn:hover {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.sv-endpoints {
+  margin-top: 0;
+}
+
+.sv-endpoints-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+}
+
+.sv-endpoint-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.75rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.sv-endpoint-row:last-child {
+  margin-bottom: 0;
+}
+
+.sv-method {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  min-width: 42px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.sv-method.get { background: #dbeafe; color: #1e40af; }
+.sv-method.post { background: #d1fae5; color: #065f46; }
+.sv-method.put { background: #fef3c7; color: #92400e; }
+.sv-method.patch { background: #fce7f3; color: #9d174d; }
+.sv-method.delete { background: #fee2e2; color: #991b1b; }
+
+.sv-path {
+  flex: 1;
+  min-width: 0;
+  color: #374151;
+  font-family: 'Monaco', 'Courier New', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sv-desc {
+  color: #6b7280;
+  font-size: 0.75rem;
+  flex-shrink: 0;
 }
 
 .message-agents-container {

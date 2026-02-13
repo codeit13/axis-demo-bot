@@ -1,8 +1,9 @@
 """Chat API routes for global chat interface."""
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Any
 from ..services.groq_service import GroqService
+from ..utils.json_extractor import extract_json_from_text
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -13,10 +14,55 @@ class ChatRequest(BaseModel):
     agent_id: Optional[str] = None
 
 
+class MockEndpointItem(BaseModel):
+    """Single endpoint in mock payload."""
+    method: str
+    path: str
+    description: str
+
+
+class MockPayloadModel(BaseModel):
+    """Structured mock API payload for Service Virtualization."""
+    serviceName: str
+    serverUrl: str
+    endpoints: List[MockEndpointItem]
+
+
 class ChatResponse(BaseModel):
     """Response model for chat endpoint."""
     content: str
     agent: Optional[str] = None
+    mock_payload: Optional[Any] = None  # MockPayloadModel when agent is service-virtualization
+
+
+def _normalize_mock_payload(raw: dict) -> Optional[dict]:
+    """Validate and normalize AI-generated mock payload to our schema."""
+    if not raw or not isinstance(raw, dict):
+        return None
+    service_name = raw.get("serviceName") or raw.get("service_name") or "Mock API"
+    server_url = raw.get("serverUrl") or raw.get("server_url") or "https://mock.axisbank.com/api/v1"
+    endpoints_raw = raw.get("endpoints") or []
+    if not isinstance(endpoints_raw, list):
+        return None
+    endpoints = []
+    for ep in endpoints_raw[:20]:  # cap at 20
+        if not isinstance(ep, dict):
+            continue
+        method = (ep.get("method") or "GET").upper()
+        if method not in ("GET", "POST", "PUT", "PATCH", "DELETE"):
+            method = "GET"
+        path = ep.get("path") or ep.get("route") or "/data"
+        if not str(path).startswith("/"):
+            path = "/" + str(path)
+        desc = ep.get("description") or ep.get("summary") or f"{method} {path}"
+        endpoints.append({"method": method, "path": path, "description": str(desc)})
+    if not endpoints:
+        endpoints = [{"method": "GET", "path": "/data", "description": "Default mock endpoint"}]
+    return {
+        "serviceName": str(service_name),
+        "serverUrl": str(server_url).rstrip("/"),
+        "endpoints": endpoints,
+    }
 
 
 @router.post("/message", response_model=ChatResponse)
@@ -32,6 +78,38 @@ async def chat_message(request: ChatRequest):
     """
     try:
         groq_service = GroqService()
+
+        # Service Virtualization: structured mock API payload from AI
+        if request.agent_id == "service-virtualization":
+            sv_system = """You are a Service Virtualization assistant. Given the user's request, output a mock API design as a single JSON object only (no markdown, no code fences). Use exactly this structure:
+{
+  "serviceName": "short name for the mock service",
+  "serverUrl": "https://mock.axisbank.com/api/v1",
+  "endpoints": [
+    { "method": "GET", "path": "/resource", "description": "brief description" }
+  ]
+}
+Rules: The base domain for serverUrl MUST be mock.axisbank.com (e.g. https://mock.axisbank.com/api/v1 or https://mock.axisbank.com/v1/...). serviceName and serverUrl are strings; endpoints is an array of objects with method (GET/POST/PUT/PATCH/DELETE), path (must start with /), and description. Infer resources from the user message (e.g. users, payments, orders). Return only the JSON object."""
+            sv_prompt = request.message.strip() or "Create a mock API with a few sample endpoints."
+            sv_response = groq_service.generate(
+                system_prompt=sv_system,
+                user_prompt=sv_prompt,
+                temperature=0.3,
+                max_tokens=800,
+            )
+            raw = extract_json_from_text(sv_response, fallback_to_text=False)
+            mock_payload = _normalize_mock_payload(raw) if isinstance(raw, dict) else None
+            if not mock_payload:
+                mock_payload = _normalize_mock_payload({
+                    "serviceName": "Mock API",
+                    "serverUrl": "https://mock.axisbank.com/api/v1",
+                    "endpoints": [{"method": "GET", "path": "/data", "description": "Default endpoint"}],
+                })
+            return ChatResponse(
+                content=f"Mock API {mock_payload['serviceName']} is ready. Use the endpoints below.",
+                agent="Service Virtualization Agent",
+                mock_payload=mock_payload,
+            )
         
         # Build system prompt based on context
         system_prompt = """You are a helpful AI assistant for Axis Bank's development team.
@@ -93,7 +171,8 @@ Keep responses professional and technical, suitable for enterprise software deve
                 'test-case-generator': 'Test Case Generator Agent',
                 'load-testing': 'Load Testing Agent',
                 'devops': 'DevOps Agent',
-                'documentation': 'Documentation Agent'
+                'documentation': 'Documentation Agent',
+                'service-virtualization': 'Service Virtualization Agent',
             }
             agent_name = agent_names.get(request.agent_id)
         
