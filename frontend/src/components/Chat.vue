@@ -114,18 +114,37 @@
             </div>
           </div>
           <div class="message-actions" v-if="message.role === 'assistant'">
-            <Button variant="ghost" size="sm" class="h-7 w-7 p-0" title="Copy">
+            <Button
+              variant="ghost"
+              size="sm"
+              class="h-7 w-7 p-0 message-action-copy"
+              :title="copyFeedbackIndex === index ? 'Copied!' : 'Copy message'"
+              @click="copyMessageContent(message, index)"
+            >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
               </svg>
+              <span v-if="copyFeedbackIndex === index" class="message-action-label">Copied!</span>
             </Button>
-            <Button variant="ghost" size="sm" class="h-7 w-7 p-0" title="Like">
+            <Button
+              variant="ghost"
+              size="sm"
+              class="h-7 w-7 p-0"
+              title="Good response (feedback)"
+              @click="messageFeedback(index, 'like')"
+            >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M7 10v12M17 10v12M3 10h18a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z"></path>
               </svg>
             </Button>
-            <Button variant="ghost" size="sm" class="h-7 w-7 p-0" title="Dislike">
+            <Button
+              variant="ghost"
+              size="sm"
+              class="h-7 w-7 p-0"
+              title="Poor response (feedback)"
+              @click="messageFeedback(index, 'dislike')"
+            >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M17 14V2M7 14v12M21 14H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2z"></path>
               </svg>
@@ -308,6 +327,7 @@ export default {
       selectedAgents: [],
       showAgentMenu: false,
       copyMockUrlFeedback: null,
+      copyFeedbackIndex: null,
       menuClickHandled: false,
       menuStyle: {},
       activeMenuTab: 'agents',
@@ -508,6 +528,41 @@ export default {
           setTimeout(() => { this.copyMockUrlFeedback = null }, 2000)
         })
       }
+    },
+
+    copyMessageContent(message, index) {
+      let text = ''
+      if (message.type === 'serviceVirtualization' && message.mockPayload) {
+        text = message.mockPayload.serverUrl || ''
+        const endpoints = (message.mockPayload.endpoints || []).map(
+          ep => `${ep.method} ${(message.mockPayload.serverUrl || '')}${ep.path} — ${ep.description || ''}`
+        )
+        if (endpoints.length) text += '\n\n' + endpoints.join('\n')
+      } else {
+        const raw = message.content || ''
+        if (typeof document !== 'undefined' && raw) {
+          const div = document.createElement('div')
+          div.innerHTML = raw
+          text = div.textContent || div.innerText || raw
+        } else {
+          text = raw.replace(/<[^>]+>/g, '')
+        }
+      }
+      if (!text.trim()) return
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text.trim()).then(() => {
+          this.copyFeedbackIndex = index
+          setTimeout(() => { this.copyFeedbackIndex = null }, 2000)
+        })
+      }
+    },
+
+    messageFeedback(index, type) {
+      // Placeholder for like/dislike feedback (e.g. send to backend later)
+      this.$nextTick(() => {
+        const msg = this.messages[index]
+        if (msg) console.debug('Message feedback', type, msg.role)
+      })
     },
 
     applySuggestion(suggestion) {
@@ -1228,6 +1283,17 @@ export default {
   gap: 0.5rem;
   margin-top: 0.5rem;
   margin-left: 44px;
+}
+
+.message-actions .message-action-copy {
+  width: auto;
+  min-width: 1.75rem;
+}
+
+.message-actions .message-action-label {
+  margin-left: 0.25rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
 }
 
 .typing-indicator {

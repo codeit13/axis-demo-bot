@@ -67,7 +67,11 @@
                 </Button>
                 <div class="accordion-analytics">
                   <div class="analytics-row">
-                    <div class="stat-item stat-hoverable">
+                    <div
+                      class="stat-item stat-hoverable"
+                      @mouseenter="showStatTooltip($event, 'usage', agent.id)"
+                      @mouseleave="hideStatTooltip"
+                    >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         class="stat-icon">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -77,26 +81,13 @@
                       </svg>
                       <span class="stat-label">Users</span>
                       <span class="stat-value">{{ getAgentStats(agent.id).users }}</span>
-                      <div class="stat-tooltip">
-                        <div class="tooltip-content">
-                          <div class="tooltip-title">Usage Analytics</div>
-                          <div class="tooltip-row">
-                            <span class="tooltip-label">Users:</span>
-                            <span class="tooltip-number">{{ getAgentStats(agent.id).users }}</span>
-                          </div>
-                          <div class="tooltip-row">
-                            <span class="tooltip-label">Total Runs:</span>
-                            <span class="tooltip-number">{{ getAgentStats(agent.id).runs || 0 }}</span>
-                          </div>
-                          <div class="tooltip-row">
-                            <span class="tooltip-label">Success Rate:</span>
-                            <span class="tooltip-number">{{ getAgentStats(agent.id).successRate || 0 }}%</span>
-                          </div>
-                        </div>
-                      </div>
                     </div>
                     
-                    <div class="stat-item stat-hoverable">
+                    <div
+                      class="stat-item stat-hoverable"
+                      @mouseenter="showStatTooltip($event, 'team', agent.id)"
+                      @mouseleave="hideStatTooltip"
+                    >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         class="stat-icon">
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -104,29 +95,6 @@
                       </svg>
                       <span class="stat-label">Team</span>
                       <span class="stat-value">{{ getAgentStats(agent.id).team }}</span>
-                      <div class="stat-tooltip">
-                        <div class="tooltip-content">
-                          <div class="tooltip-title">Team Information</div>
-                          <div class="tooltip-row">
-                            <span class="tooltip-label">Team:</span>
-                            <span class="tooltip-text">{{ getAgentStats(agent.id).team }}</span>
-                          </div>
-                          <div class="tooltip-members"
-                            v-if="getAgentStats(agent.id).teamMembers && getAgentStats(agent.id).teamMembers.length > 0">
-                            <div class="tooltip-label">Members:</div>
-                            <div class="tooltip-member-list">
-                              <div class="tooltip-member-item"
-                                v-for="(member, index) in getAgentStats(agent.id).teamMembers" :key="index">
-                                <div class="member-avatar" :style="{ backgroundColor: getMemberColor(member) }">
-                                  {{ getMemberInitials(member) }}
-                                </div>
-                                <span class="member-name">{{ member }}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div class="tooltip-desc">Responsible for development & maintenance</div>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -214,6 +182,59 @@
       <!-- Service Virtualization Agent Dialog -->
       <ServiceVirtualizationAgentDialog :is-open="showServiceVirtualizationDialog"
         @update:open="showServiceVirtualizationDialog = $event" />
+
+    <!-- Portaled stat tooltips (never clipped by overflow) -->
+    <Teleport to="body">
+      <Transition name="tooltip-fade">
+        <div
+          v-if="statTooltip.show && statTooltip.agentId"
+          class="stat-tooltip-portal"
+          :style="{
+            left: statTooltip.x + 'px',
+            top: statTooltip.y + 'px'
+          }"
+          @mouseenter="clearStatTooltipHide"
+          @mouseleave="hideStatTooltip(true)"
+        >
+          <div class="tooltip-content" v-if="statTooltip.type === 'usage'">
+            <div class="tooltip-title">Usage Analytics</div>
+            <div class="tooltip-row">
+              <span class="tooltip-label">Users:</span>
+              <span class="tooltip-number">{{ getAgentStats(statTooltip.agentId).users }}</span>
+            </div>
+            <div class="tooltip-row">
+              <span class="tooltip-label">Total Runs:</span>
+              <span class="tooltip-number">{{ getAgentStats(statTooltip.agentId).runs || 0 }}</span>
+            </div>
+            <div class="tooltip-row">
+              <span class="tooltip-label">Success Rate:</span>
+              <span class="tooltip-number">{{ getAgentStats(statTooltip.agentId).successRate || 0 }}%</span>
+            </div>
+          </div>
+          <div class="tooltip-content" v-else-if="statTooltip.type === 'team'">
+            <div class="tooltip-title">Team Information</div>
+            <div class="tooltip-row">
+              <span class="tooltip-label">Team:</span>
+              <span class="tooltip-text">{{ getAgentStats(statTooltip.agentId).team }}</span>
+            </div>
+            <div class="tooltip-members"
+              v-if="getAgentStats(statTooltip.agentId).teamMembers && getAgentStats(statTooltip.agentId).teamMembers.length > 0">
+              <div class="tooltip-label">Members:</div>
+              <div class="tooltip-member-list">
+                <div class="tooltip-member-item"
+                  v-for="(member, index) in getAgentStats(statTooltip.agentId).teamMembers" :key="index">
+                  <div class="member-avatar" :style="{ backgroundColor: getMemberColor(member) }">
+                    {{ getMemberInitials(member) }}
+                  </div>
+                  <span class="member-name">{{ member }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="tooltip-desc">Responsible for development & maintenance</div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
         </div>
       </TabsContent>
     </Tabs>
@@ -260,6 +281,8 @@ export default {
       showCodeTemplateDialog: false,
       showPromptAmplifierDialog: false,
       showServiceVirtualizationDialog: false,
+      statTooltip: { show: false, type: 'usage', agentId: null, x: 0, y: 0 },
+      statTooltipHideTimeout: null,
       guardrails: {
         humanApproval: true,
         piiRedaction: true,
@@ -605,6 +628,45 @@ export default {
       }
       return colors[Math.abs(hash) % colors.length]
     },
+    showStatTooltip(event, type, agentId) {
+      if (this.statTooltipHideTimeout) {
+        clearTimeout(this.statTooltipHideTimeout)
+        this.statTooltipHideTimeout = null
+      }
+      const el = event && event.currentTarget
+      if (el) {
+        const rect = el.getBoundingClientRect()
+        this.statTooltip = {
+          show: true,
+          type,
+          agentId,
+          x: rect.left + rect.width / 2,
+          y: rect.top
+        }
+      } else if (agentId && this.statTooltip.show) {
+        this.statTooltip = { ...this.statTooltip, agentId, type }
+      }
+    },
+    hideStatTooltip(immediate = false) {
+      if (this.statTooltipHideTimeout) {
+        clearTimeout(this.statTooltipHideTimeout)
+        this.statTooltipHideTimeout = null
+      }
+      if (immediate) {
+        this.statTooltip = { show: false, type: 'usage', agentId: null, x: 0, y: 0 }
+      } else {
+        this.statTooltipHideTimeout = setTimeout(() => {
+          this.statTooltip = { show: false, type: 'usage', agentId: null, x: 0, y: 0 }
+          this.statTooltipHideTimeout = null
+        }, 120)
+      }
+    },
+    clearStatTooltipHide() {
+      if (this.statTooltipHideTimeout) {
+        clearTimeout(this.statTooltipHideTimeout)
+        this.statTooltipHideTimeout = null
+      }
+    },
     handleAgentClick(agent) {
       if (agent.actionType === 'openDialog') {
         if (agent.dialogType === 'integration') {
@@ -749,7 +811,7 @@ export default {
   grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 @media (max-width: 1024px) {
@@ -797,6 +859,11 @@ export default {
   overflow: visible;
 }
 
+/* Allow the accordion content panel to show tooltips outside (avoid clipping) */
+.agent-accordion-card :deep(.overflow-hidden:has(.accordion-body)) {
+  overflow: visible;
+}
+
 .accordion-trigger-content {
   display: flex;
   align-items: center;
@@ -841,7 +908,7 @@ export default {
 .accordion-body {
   padding: 0 1.5rem 0.5rem;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .accordion-analytics {
@@ -1056,23 +1123,21 @@ export default {
   transition: color 0.2s ease;
 }
 
-/* Stat Tooltip */
-.stat-tooltip {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(-8px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  z-index: 10000;
-  margin-bottom: 8px;
+/* Stat Tooltip (portaled to body so never clipped) */
+.stat-tooltip-portal {
+  position: fixed;
+  transform: translate(-50%, -100%) translateY(-8px);
+  z-index: 99999;
+  pointer-events: auto;
 }
 
-.stat-hoverable:hover .stat-tooltip {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-  pointer-events: auto;
+.stat-tooltip-portal.tooltip-fade-enter-active,
+.stat-tooltip-portal.tooltip-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+.stat-tooltip-portal.tooltip-fade-enter-from,
+.stat-tooltip-portal.tooltip-fade-leave-to {
+  opacity: 0;
 }
 
 .tooltip-content {
@@ -1082,9 +1147,11 @@ export default {
   border-radius: 8px;
   font-size: 0.75rem;
   min-width: 160px;
+  max-width: 260px;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   position: relative;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .tooltip-content::after {
@@ -1104,7 +1171,6 @@ export default {
   letter-spacing: 0.5px;
   margin-bottom: 0.5rem;
   font-weight: 600;
-  white-space: nowrap;
 }
 
 .tooltip-row {
@@ -1122,21 +1188,18 @@ export default {
 .tooltip-label {
   font-size: 0.75rem;
   color: #d1d5db;
-  white-space: nowrap;
 }
 
 .tooltip-number {
   font-size: 0.875rem;
   font-weight: 700;
   color: white;
-  white-space: nowrap;
 }
 
 .tooltip-text {
   font-size: 0.75rem;
   font-weight: 600;
   color: white;
-  white-space: nowrap;
 }
 
 .tooltip-value {
@@ -1152,7 +1215,6 @@ export default {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  white-space: nowrap;
 }
 
 .tooltip-members {
@@ -1188,7 +1250,7 @@ export default {
 .member-name {
   font-size: 0.75rem;
   color: white;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .demo-button {
